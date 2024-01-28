@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
 
 import numpy as np 
 import torch
@@ -57,9 +55,11 @@ class network_dists(torch.nn.Module):
         
         return c
 
+##########################################################################################################
 
-# In[31]:
+#Network Training
 
+##########################################################################################################
 
 def _network_training(net,epochs, distances_array):
     optimizer = optim.Adam(net.parameters(), lr=1e-6)

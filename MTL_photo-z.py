@@ -8,15 +8,14 @@ import matplotlib.cm as cm
 import os
 from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader, Dataset
-from Photo_z_architecture import photoz_network
 import sys
 
-sys.path.append('/path/to/your/directory')
+sys.path.append('Photo_z_architecture.py')
+from Photo_z_architecture import photoz_network
 
 class MTL_photoz:
     def _init_(self,photoz_hlayers, photoz_num_gauss):
-        self.net_photoz = net_photoz(photoz_hlayers, photoz_num_gauss)
-        net = network(layers,num_gauss).cuda()
+        self.net_photoz = photoz_network(photoz_hlayers, photoz_num_gauss).cuda()
 
     def get_loader_fluxes(self, filetype, test_size, val_size, batch_size, data_dir='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv',*args):
         #Transform raw data
@@ -83,8 +82,7 @@ class MTL_photoz:
   
   def train_photoz(self, epochs, lr):
       loader_train, loader_val = self.get_loader_fluxes
-      net = network(layers,num_gauss).cuda()
-      net = self.net_photoz(training_data)
+      net =  self.net_photoz.cuda() #el cuda lo pongo?
       train_losses = [] 
       alpha_list = []
       mu_list = []

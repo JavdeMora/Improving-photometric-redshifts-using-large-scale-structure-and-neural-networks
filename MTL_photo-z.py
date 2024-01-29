@@ -8,11 +8,15 @@ import matplotlib.cm as cm
 import os
 from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader, Dataset
-#from Photo_z_architecture import photoz_network
+from Photo_z_architecture import photoz_network
+import sys
+
+sys.path.append('/path/to/your/directory')
 
 class MTL_photoz:
-    def _init_(self):
-        self.net_photoz = net_photoz()
+    def _init_(self,photoz_hlayers, photoz_num_gauss):
+        self.net_photoz = net_photoz(photoz_hlayers, photoz_num_gauss)
+        net = network(layers,num_gauss).cuda()
 
     def get_loader_fluxes(self, filetype, test_size, val_size, batch_size, data_dir='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv',*args):
         #Transform raw data
@@ -77,9 +81,47 @@ class MTL_photoz:
     
   def get_training_distances(self,*args):
   
-  def train_photoz(self,training_data):
-  training_data=self.get_training_fluxes
-  z = self.net_photoz(training_data)
+  def train_photoz(self, epochs, lr):
+      loader_train, loader_val = self.get_loader_fluxes
+      net = network(layers,num_gauss).cuda()
+      net = self.net_photoz(training_data)
+      train_losses = [] 
+      alpha_list = []
+      mu_list = []
+      ztrue_list = []
+      optimizer = optim.Adam(net.parameters(), lr=lr) 
+      scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1) #para ir cambiando el lr a medida q se itera
+      for epoch in range(epochs):
+          for datain, xeval in loader_train:
+              optimizer.zero_grad() 
+              logalpha, mu, logsig= net(datain.to(device))
+              sig = torch.exp(logsig)
+              #loss function:
+              log_prob = logalpha[:,:,None] - logsig[:,:,None] - 0.5*((xeval.to(device)[:,None] - mu[:,:,None])/sig[:,:,None])**2
+              log_prob = torch.logsumexp(log_prob,1)
+              loss = - log_prob.mean()
+              loss.backward()
+              optimizer.step()
+              train_loss = loss.item()
+              train_losses.append(train_loss)
+          scheduler.step()
+          
+          net.eval()#desactivar algunas funciones de la red para poder evaluar resultados
+          val_losses = []
+          logalpha_list = []
+          out_pred, out_true = [],[]
+          with torch.no_grad():
+              for xval, yval in loader_val:
+                  logalpha, mu, logsig= net(xval.to(device))
+                  sig = torch.exp(logsig)
+                  log_prob = logalpha[:,:,None] - logsig[:,:,None] - 0.5*((yval.to(device)[:,None] - mu[:,:,None])/sig[:,:,None])**2
+                  log_prob = torch.logsumexp(log_prob,1)
+                  loss = - log_prob.mean()
+                  val_loss = loss.item()
+                  val_losses.append(val_loss)
+              if epoch % 1 == 0:
+                  print('Epoch [{}/{}], Train Loss: {:.4f}, Val Loss: {:.4f}'.format(epoch+1, epochs, train_loss, val_loss))
+
   def train_clustering(self,*args):
   training_data=self.get_training_distances
   def train_mtl(self, *args):im

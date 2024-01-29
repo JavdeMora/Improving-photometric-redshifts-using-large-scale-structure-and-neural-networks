@@ -3,12 +3,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-##########################################################################################################
-
-#Mixture Density Network
-
-##########################################################################################################
-class network(torch.nn.Module):
+class photoz_network(torch.nn.Module):
     def __init__(self, nhidden, num_gauss):
         super().__init__()
         self.inputlay = torch.nn.Sequential(nn.Linear(6, 20),nn.LeakyReLU(0.1))

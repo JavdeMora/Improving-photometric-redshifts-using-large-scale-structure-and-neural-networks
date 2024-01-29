@@ -61,13 +61,13 @@ class network(torch.nn.Module):
 # Network Training
 
 ##########################################################################################################
-def _network_training(net,epochs):
+def _network_training(net,epochs,loader_train, loader_val):
     train_losses = [] 
     alpha_list = []
     mu_list = []
     ztrue_list = []
-    optimizer = optim.Adam(net.parameters(), lr=2e-3) #, weight_decay=0.01)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1) #para ir cambiando el lr a medida q se itera
+    optimizer = optim.Adam(net.parameters(), lr=2e-3)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1) 
     for epoch in range(epochs):
         for datain, xeval in loader_train:
             optimizer.zero_grad() 

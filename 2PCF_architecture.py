@@ -1,32 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
 
 import numpy as np 
 import torch
 from torch.utils.data import DataLoader, dataset, TensorDataset
 from torch import nn, optim
 from torch.optim import lr_scheduler
-
-
-# In[2]:
-
-
 import random
 
+##########################################################################################################
 
-# In[3]:
+#Network definition
 
-
-import sys
-sys.path.append('../../')
-
-
-# In[12]:
-
-
+##########################################################################################################
 class network_dists(torch.nn.Module):
     def __init__(self, nhidden):
         super().__init__()
@@ -68,19 +55,21 @@ class network_dists(torch.nn.Module):
         
         return c
 
+##########################################################################################################
 
-# In[31]:
+#Network Training
 
+##########################################################################################################
 
-def _network_training(net,epochs):
-    optimizer = optim.Adam(net.parameters(), lr=1e-6)# weight_decay=0.00001)
+def _network_training(net,epochs, distances_array):
+    optimizer = optim.Adam(net.parameters(), lr=1e-6)
     scheduler = lr_scheduler.StepLR(optimizer, step_size=1200, gamma=0.01)
     CELoss = nn.CrossEntropyLoss(reduction='none')
-    Nobj = 10
+    Nobj = 100_000 #CAMBIAR A distances_array.shape[0]
     for epoch in range(epochs):
         print('starting epoch', epoch)
 
-        distances_array_sub = distances_array[np.random.randint(0, distances_array.shape[0], 100_000)]
+        distances_array_sub = distances_array[np.random.randint(0, distances_array.shape[0], N_obj)]
 
         data_training = TensorDataset(distances_array_sub)
         loader = DataLoader(data_training, batch_size=500, shuffle=True)

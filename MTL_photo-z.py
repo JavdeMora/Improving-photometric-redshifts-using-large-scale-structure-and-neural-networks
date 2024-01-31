@@ -129,8 +129,53 @@ class MTL_photoz:
 
                 if epoch % 1 == 0:
                     print('Epoch [{}/{}], Train Loss: {:.4f}, Val Loss: {:.4f}'.format(epoch+1, epochs, train_loss, val_loss))
+        return net
                     
-    
+    def pred_photoz(self, colors_df, id_galaxy, trained_network):
+            input_labs = ['g-r','r-i','i-z','z-y','y-j','j-h']
+            galaxy=colors_df.loc[id_galaxy]
+            #Predictions
+            logalpha, mu, logsig = trained_network(torch.Tensor(galaxy[input_labs].values).to(device))
+            #Calculate alpha
+            alpha = np.exp(logalpha.detach().cpu().numpy())
+            #Calculate sigma
+            sigma = np.exp(logsig.detach().cpu().numpy())
+            #Calculate mu
+            mu = mu.detach().cpu().numpy()
+            #Calcuate zmean
+            zmean = (alpha*mu).sum(1)
+            #Create dataframe
+            df = pd.DataFrame(np.c_[zmean,test_target], columns = ['z','zt'])
+            #Calculate and append error
+            x = np.linspace(0, 1, 1000) #ya que filtramos catalogo a z<1
+            galaxy_pdf = np.zeros(shape=x.shape)
+            mean_pdf=0
+            for i in range(len(mu)):
+                muGauss = mu[i]
+                sigmaGauss = sigma[i]
+                Gauss = stats.norm.pdf(x, muGauss, sigmaGauss)
+                coefficients = alpha[i]
+                mean_pdf= mean_pdf + muGauss*coefficients
+                coefficients /= coefficients.sum()# in case these did not add up to 1
+                Gauss= coefficients * Gauss
+                galaxy_pdf = galaxy_pdf + Gauss
+
+            galaxy_pdf_norm=galaxy_pdf/galaxy_pdf.sum()
+
+            print("Mean of the distribution:", mean_pdf)
+            print("Z true:", df.loc['zt'])    
+
+            fig3 = plt.figure(figsize=(10, 6))
+            plt.plot(x,galaxy_pdf_norm, color='black', label='galaxy_pdf_norm')
+            # Add title and labels with LaTeX-style formatting
+            plt.xlabel(f'$z$', fontsize=18)
+            plt.xticks(fontsize=18)
+            plt.yticks(fontsize=18)
+            plt.ylabel(f' $p(z)$', fontsize=18)
+            z_true_line = plt.axvline(df.loc['zt'], color='r', linestyle=':', label='z_true')
+            mean_pdf_line=plt.axvline(mean_pdf,color='g',linestyle='-', label='mean')
+            plt.legend()
+            plt.show()    
     #def get_training_distances(self, *args):
         # Function body...
   def train_clustering(self,*args):

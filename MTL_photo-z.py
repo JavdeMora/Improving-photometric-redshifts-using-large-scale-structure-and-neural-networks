@@ -19,7 +19,7 @@ class MTL_photoz:
     def __init__(self, photoz_hlayers, photoz_num_gauss):
         self.net_photoz = photoz_network(photoz_hlayers, photoz_num_gauss).cuda()
 
-    def get_loader_fluxes(self, filetype, test_size, val_size, batch_size, data_dir='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv', *args):
+    def get_colorsdf(self, filetype, data_dir='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv', *args):
         #Transform raw data
         if filetype == 'csv':
             parquet = pd.read_csv(str(data_dir),sep =',', header=0, comment='#')
@@ -55,6 +55,10 @@ class MTL_photoz:
         dataset = filtered_parquet
         #Create colour dataframe
         colors_df = pd.DataFrame(np.c_[dataset['observed_redshift_gal'],dataset['vis'],dataset['g']-dataset['r'],dataset['r']-dataset['i'],dataset['i']-dataset['z'], dataset['z']-dataset['y'], dataset['y']-dataset['j'],dataset['j']-dataset['h']], columns=['observed_redshift_gal','Mag_i','g-r','r-i','i-z','z-y','y-j','j-h'])
+        
+        return colors_df
+        
+    def get_loaders(self, test_size, val_size, batch_size, colors_df, *args):
         #Split data to train, validation and test datasets
         test_size= test_size
         train_dataset, test_dataset=train_test_split(colors_df, test_size=test_size)
@@ -80,8 +84,8 @@ class MTL_photoz:
         
         return loader_train, loader_val
 
-    def train_photoz(self, epochs, lr, filetype, test_size, val_size, batch_size, data_dir, *args): #is there a better way so I don't have too many arguments?
-        loader_train, loader_val = self.get_loader_fluxes(filetype, test_size, val_size, batch_size, data_dir, *args)
+    def train_photoz(self, epochs, lr, loader_train, loader_val, *args): #is there a better way so I don't have too many arguments?
+        loader_train, loader_val = loader_train, loader_val
         net =  self.net_photoz.cuda()
         train_losses = [] 
         alpha_list = []
@@ -125,6 +129,7 @@ class MTL_photoz:
 
                 if epoch % 1 == 0:
                     print('Epoch [{}/{}], Train Loss: {:.4f}, Val Loss: {:.4f}'.format(epoch+1, epochs, train_loss, val_loss))
+                    
     
     #def get_training_distances(self, *args):
         # Function body...

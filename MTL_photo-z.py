@@ -80,7 +80,7 @@ class MTL_photoz:
         
         return loader_train, loader_val
 
-    def train_photoz(self, epochs, lr, filetype, test_size, val_size, batch_size, data_dir, *args):
+    def train_photoz(self, epochs, lr, filetype, test_size, val_size, batch_size, data_dir, *args): #is there a better way so I don't have too many arguments?
         loader_train, loader_val = self.get_loader_fluxes(filetype, test_size, val_size, batch_size, data_dir, *args)
         net =  self.net_photoz.cuda()
         train_losses = [] 

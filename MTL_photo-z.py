@@ -13,13 +13,18 @@ import sys
 sys.path.append('Photo_z_architecture.py')
 from Photo_z_architecture import photoz_network
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class MTL_photoz:
-    def __init__(self, photoz_hlayers, photoz_num_gauss):
+    def __init__(self, photoz_hlayers, photoz_num_gauss,epochs,lr=1e-3 ,batch_size = 100, pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'):
         self.net_photoz = photoz_network(photoz_hlayers, photoz_num_gauss).cuda()
-
-    def get_colorsdf(self, filetype, data_dir='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv', *args):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.epochs=epochs
+        self.batch_size = batch_size
+        cat=self._get_colorsdf(pathfile=pathfile)
+        self.cat=cat
+        
+    def _get_colorsdf(self, filetype='csv', pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv', *args):
         #Transform raw data
         if filetype == 'csv':
             parquet = pd.read_csv(str(data_dir),sep =',', header=0, comment='#')
@@ -58,10 +63,10 @@ class MTL_photoz:
         
         return colors_df
         
-    def get_loaders(self, test_size, val_size, batch_size, colors_df, *args):
+    def _get_loaders(self, test_size, val_size, batch_size,  *args):
         #Split data to train, validation and test datasets
         test_size= test_size
-        train_dataset, test_dataset=train_test_split(colors_df, test_size=test_size)
+        train_dataset, test_dataset=train_test_split(self.cat, test_size=test_size)
         #Split data to train, validation and test datasets
         val_size = val_size
         train_df, val_df = train_test_split(train_dataset, test_size=val_size)
@@ -84,8 +89,8 @@ class MTL_photoz:
         
         return loader_train, loader_val
 
-    def train_photoz(self, epochs, lr, loader_train, loader_val, *args): #is there a better way so I don't have too many arguments?
-        loader_train, loader_val = loader_train, loader_val
+    def train_photoz(self, lr, test_size=0.2, val_size=0.25 *args): #argumento solo catalogo
+        loader_train, loader_val = self.get_loaders(test_size, val_size, self.batch_size)
         net =  self.net_photoz.cuda()
         train_losses = [] 
         alpha_list = []
@@ -94,7 +99,7 @@ class MTL_photoz:
         optimizer = optim.Adam(net.parameters(), lr=lr) 
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
 
-        for epoch in range(epochs):
+        for epoch in range(self.epochs):
             for datain, xeval in loader_train:
                 optimizer.zero_grad() 
                 logalpha, mu, logsig = net(datain.to(device))

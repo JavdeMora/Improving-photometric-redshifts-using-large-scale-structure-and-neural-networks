@@ -9,6 +9,7 @@ import os
 from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 import sys
+import scipy.stats as stats
 
 sys.path.append('Photo_z_architecture.py')
 from Photo_z_architecture import photoz_network
@@ -158,7 +159,7 @@ class MTL_photoz:
         df = pd.DataFrame(np.array([[i, g, r, z, h, j, y]]), columns=['i', 'g', 'r', 'z', 'h', 'j', 'y'])
         test_input=self._get_colorsdf(filetype='dataframe', df= df)
         
-        logalpha, mu, logsig =  self.net_photoz(torch.Tensor(test_input.values).to(device))
+        logalpha, mu, logsig =  self.net_photoz(torch.Tensor(test_input.values).to(self.device))
         #Calculate alpha
         alpha = np.exp(logalpha.detach().cpu().numpy())
         #Calculate sigma
@@ -203,6 +204,8 @@ class MTL_photoz:
             plt.legend()
             plt.show()   
 
+    #def get_training_distances(self, *args):
+        # Function body...
     #def get_training_distances(self, *args):
         # Function body...
   def train_clustering(self,*args):

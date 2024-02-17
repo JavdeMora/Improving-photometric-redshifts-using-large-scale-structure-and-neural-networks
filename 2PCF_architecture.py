@@ -2,11 +2,6 @@ import numpy as np
 import torch
 from torch import nn
 
-##########################################################################################################
-
-#Network definition
-
-##########################################################################################################
 class network_dists(torch.nn.Module):
     def __init__(self, nhidden):
         super().__init__()

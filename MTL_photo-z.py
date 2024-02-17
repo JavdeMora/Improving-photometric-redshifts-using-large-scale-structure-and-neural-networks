@@ -203,11 +203,64 @@ class MTL_photoz:
             mean_pdf_line=plt.axvline(mean_pdf,color='g',linestyle='-', label='mean')
             plt.legend()
             plt.show()   
+    
+    def _get_distances_array(self, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'):
+        d = np.load(pathfile_distances)#(400, 100000)
+        drand = np.load(pathfile_drand)
+    
+        distA = d.flatten()
+        distB = drand.flatten()
+    
+        min_sep= 0.03
+        max_sep = 26
+        nedges=8
+    
+        th = np.linspace(np.log10(min_sep), np.log10(max_sep), nedges)
+        theta = 10**th * (1./60.)
+    
+        Ndd = np.array([len(distA[(distA>theta[k])&(distA<theta[k+1])]) for k in range(len(theta)-1)])
+        Ndd = np.append(Ndd,len(distA[(distA>theta[-1])]))
+        Pdd = Ndd / Ndd.sum()
+        wdd = Pdd.max() / Pdd 
+    
+        ranges =  [(theta[k],theta[k+1]) for k in range(len(theta)-1)]
+        ranges.append((theta[-1],1.1))
+        ranges = np.array(ranges)
+        weights = wdd
+    
+        arr1 = d.copy().T
+        arr2 = drand.copy().T
+    
+        # Labeling arrays
+        labeled_arr1 = np.column_stack((arr1, np.zeros(arr1.shape[0], dtype=int)))  # Appending a column of 0s
+        labeled_arr2 = np.column_stack((arr2, np.ones(arr2.shape[0], dtype=int)))  # Appending a column of 1s
+    
+        # Concatenating the labeled arrays vertically
+        combined_array = np.vstack((labeled_arr1, labeled_arr2))
+        # Creating the final list
+        result_list = []
+        for i in range(0,combined_array.shape[1]-1):
+            for j in range(combined_array.shape[0]):
+                value = combined_array[j, i]
+                array_type = int(combined_array[j, -1])  # Extracting the array type (0 or 1)
+                column_index = i  # Extracting the jk index (0 to 400)
+    
+                result_list.append([value, array_type, column_index])
+    
+        # Converting the list to a NumPy array
+        distances_array = np.array(result_list)
+    
+        range_idx = np.searchsorted(ranges[:, 1], distances_array[:,0], side='right')
+    
+        w = weights[range_idx]
+        distances_array = np.c_[distances_array, w.reshape(len(w),1)]
+        distances_array = torch.Tensor(distances_array)
+        
+        return distances_array
 
-    #def get_training_distances(self, *args):
-        # Function body...
-    #def get_training_distances(self, *args):
-        # Function body...
+
+        
+
   def train_clustering(self,*args):
   training_data=self.get_training_distances
   def train_mtl(self, *args):im

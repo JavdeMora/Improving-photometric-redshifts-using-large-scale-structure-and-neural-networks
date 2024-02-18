@@ -210,8 +210,8 @@ class MTL_photoz:
             plt.show()   
     
     def _get_distances_array(self, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'):
-        d = np.load(pathfile_distances)[:,:100]#(400, 100000)
-        drand = np.load(pathfile_drand)[:,:100]
+        d = np.load(pathfile_distances)#(400, 100000)
+        drand = np.load(pathfile_drand)
     
         distA = d.flatten()
         distB = drand.flatten()

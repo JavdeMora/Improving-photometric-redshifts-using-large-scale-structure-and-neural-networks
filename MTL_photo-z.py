@@ -210,8 +210,8 @@ class MTL_photoz:
             plt.show()   
     
     def _get_distances_array(self, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'):
-        d = np.load(pathfile_distances)#(400, 100000)
-        drand = np.load(pathfile_drand)
+        d = np.load(pathfile_distances)[:,:100]#(400, 100000)
+        drand = np.load(pathfile_drand)[:,:100]
     
         distA = d.flatten()
         distB = drand.flatten()
@@ -296,3 +296,19 @@ class MTL_photoz:
                 optimizer.step()
             scheduler.step()
             print(wloss.item())
+            
+    def pred_clustering(self, min_sep, max_sep, num_rings):
+        th_test = np.linspace(np.log10(min_sep), np.log10(max_sep), num_rings)
+        thetac_test = 10**np.array([(th_test[i]+th_test[i+1])/2 for i in range(len(th_test)-1)])
+        thetac_test = thetac_test/60
+        inp_test = torch.Tensor(thetac_test)
+        
+        preds=np.empty(shape=(400,7,2))
+        for jk in range(400):
+            jkf = torch.LongTensor(jk*np.ones(shape=inp_test.shape))
+            c = clustnet(inp_test.unsqueeze(1).cuda(),jkf.cuda())
+            s = nn.Softmax(1)
+            p = s(c).detach().cpu().numpy()
+            preds[jk]=p
+            
+        pred_ratio = preds[:,:,0]/(1-preds[:,:,0])-1

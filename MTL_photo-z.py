@@ -15,10 +15,15 @@ sys.path.append('Photo_z_architecture.py')
 from Photo_z_architecture import photoz_network
 
 
+sys.path.append('clustering_architecture.py')
+from clustering_architecture import network_dists
+
+
 
 class MTL_photoz:
-    def __init__(self, photoz_hlayers, photoz_num_gauss,epochs,lr=1e-3 ,batch_size = 100, pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'):
+    def __init__(self, photoz_hlayers, photoz_num_gauss, cluster_hlayers, epochs,lr=1e-3 ,batch_size = 100, pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'):
         self.net_photoz = photoz_network(photoz_hlayers, photoz_num_gauss).cuda()
+        self.net_2pcf= network_dists(cluster_hlayers).cuda()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.epochs = epochs
         self.batch_size = batch_size
@@ -104,7 +109,7 @@ class MTL_photoz:
 
     def train_photoz(self, test_size=0.2, val_size=0.25, *args): #argumento solo catalogo
         loader_train, loader_val = self._get_loaders(test_size, val_size, self.batch_size)
-        net =  self.net_photoz.cuda()
+        net =  self.net_photoz
         train_losses = [] 
         alpha_list = []
         mu_list = []
@@ -257,10 +262,37 @@ class MTL_photoz:
         distances_array = torch.Tensor(distances_array)
         
         return distances_array
+    
+    def train_clustering(self, epochs=500, Nobj=10, batch_size= 500, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy',*args):
+        distances_array=self._get_distances_array(pathfile_distances=pathfile_distances,pathfile_drand=pathfile_drand)
 
+        distances_array=_get_distances_array()
+        clustnet= self.net_2pcf
 
-        
+        optimizer = optim.Adam(clustnet.parameters(), lr=self.lr)# deberia separar entre lr photoz y lr clustering
+        scheduler = lr_scheduler.StepLR(optimizer, step_size=1200, gamma=0.01)
+        CELoss = nn.CrossEntropyLoss(reduction='none')
+        Nobj = 10
+        for epoch in range(self.epochs):#deberia separar entre epochs photoz y epochs clustering
+            print('starting epoch', epoch)
 
-  def train_clustering(self,*args):
-  training_data=self.get_training_distances
-  def train_mtl(self, *args):im
+            distances_array_sub = distances_array[np.random.randint(0, distances_array.shape[0], distances_array.shape[0])]#revisar la size (yo he usado todas las distancias para entrenar, preguntar a laura)
+
+            data_training = TensorDataset(distances_array_sub)
+            loader = DataLoader(data_training, batch_size=500, shuffle=True)
+
+            #dist, class_, jk, w
+            for x in loader:  
+                x = x[0]
+
+                d, dclass, jk, w = x[:,0], x[:,1], x[:,2], x[:,3]
+                optimizer.zero_grad()
+                c = clustnet(d.unsqueeze(1).cuda(), jk.type(torch.LongTensor).cuda())#
+
+                loss = CELoss(c.squeeze(1),dclass.type(torch.LongTensor).cuda())
+                wloss = (w.cuda()*loss).mean()
+
+                wloss.backward()
+                optimizer.step()
+            scheduler.step()
+            print(wloss.item())

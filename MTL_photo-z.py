@@ -311,4 +311,4 @@ class MTL_photoz:
             p = s(c).detach().cpu().numpy()
             preds[jk]=p
             
-        pred_ratio = preds[:,:,0]/(1-preds[:,:,0])-1
+        pred_ratio = preds[:,:,0]/(1-preds[:,:,0])-1 #is this the prediction?

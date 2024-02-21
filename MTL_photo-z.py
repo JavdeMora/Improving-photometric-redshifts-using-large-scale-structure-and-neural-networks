@@ -210,8 +210,8 @@ class MTL_photoz:
             plt.show()   
     
     def _get_distances_array(self, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'):
-        d = np.load(pathfile_distances)#(400, 100000)
-        drand = np.load(pathfile_drand)
+        d = np.load(pathfile_distances)[:,:100]#(400, 100000)
+        drand = np.load(pathfile_drand)[:,:100]
     
         distA = d.flatten()
         distB = drand.flatten()
@@ -263,17 +263,16 @@ class MTL_photoz:
         
         return distances_array
     
-    def train_clustering(self, epochs=500, Nobj=10, batch_size= 500, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy',*args):
+    def train_clustering(self, epochs=2, Nobj=10, batch_size= 500, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy',*args):
         distances_array=self._get_distances_array(pathfile_distances=pathfile_distances,pathfile_drand=pathfile_drand)
 
-        distances_array=_get_distances_array()
         clustnet= self.net_2pcf
 
         optimizer = optim.Adam(clustnet.parameters(), lr=self.lr)# deberia separar entre lr photoz y lr clustering
-        scheduler = lr_scheduler.StepLR(optimizer, step_size=1200, gamma=0.01)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1200, gamma=0.01)
         CELoss = nn.CrossEntropyLoss(reduction='none')
         Nobj = 10
-        for epoch in range(self.epochs):#deberia separar entre epochs photoz y epochs clustering
+        for epoch in range(epochs):#deberia separar entre epochs photoz y epochs clustering
             print('starting epoch', epoch)
 
             distances_array_sub = distances_array[np.random.randint(0, distances_array.shape[0], distances_array.shape[0])]#revisar la size (yo he usado todas las distancias para entrenar, preguntar a laura)
@@ -297,8 +296,9 @@ class MTL_photoz:
             scheduler.step()
             print(wloss.item())
             
-    def pred_clustering(self, min_sep, max_sep, num_rings):
-        th_test = np.linspace(np.log10(min_sep), np.log10(max_sep), num_rings)
+    def pred_clustering(self, min_sep= 0.03, max_sep = 26, nedges=8):
+        clustnet=self.net_2pcf
+        th_test = np.linspace(np.log10(min_sep), np.log10(max_sep), nedges)
         thetac_test = 10**np.array([(th_test[i]+th_test[i+1])/2 for i in range(len(th_test)-1)])
         thetac_test = thetac_test/60
         inp_test = torch.Tensor(thetac_test)
@@ -311,4 +311,6 @@ class MTL_photoz:
             p = s(c).detach().cpu().numpy()
             preds[jk]=p
             
-        pred_ratio = preds[:,:,0]/(1-preds[:,:,0])-1 #is this the prediction?
+        pred_ratio = preds[:,:,0]/(1-preds[:,:,0])-1
+        return pred_ratio
+    

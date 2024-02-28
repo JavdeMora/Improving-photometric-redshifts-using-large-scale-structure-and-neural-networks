@@ -36,6 +36,7 @@ class MTL_photoz:
         
         cat_photometry=self._get_photometry_dataset(pathfile)
         self.cat_photometry=cat_photometry
+        self.cat_colors =self._get_colors()
         
         
         
@@ -44,7 +45,7 @@ class MTL_photoz:
         self.test_input=torch.Tensor(self.cat.loc[0][['g-r','r-i','i-z','z-y','y-j','j-h']].values)# esto es solo para testear
         
         
-    def _get_photometry_dataset(self, pathfile):
+    def _get_photometry_dataset(self, pathfile, bands=['i', 'g', 'r', 'z', 'h', 'j', 'y']):
         """
         Read photometry dataset from file.
 
@@ -64,19 +65,73 @@ class MTL_photoz:
             df = pd.read_parquet(str(pathfile), sep=',', header=0, comment='#')
         else:
             raise ValueError("Only filetypes '.csv' and '.parquet' are supported")
+            
+        # Check if all required columns are present in the DataFrame
+        column_mapping = 
+        required_columns = set(bands)
+        if ~required_columns.issubset(df.columns):
+            # Rename columns based on the provided mapping
+            with open(json_file_path, 'r') as json_file:
+                column_mapping = json.load('column_mapping.json')
+            df = df.rename(columns=column_mapping)
+                        
+            # Add error columns to corresponding magnitude columns
+            for b in bands:
+                df[b]=df[b]+df['err_'+b]    
+            
+            # Drop error columns and other unnecessary columns
+            columns_to_drop = [col for col in df.columns if df.startswith('err_')] + ['dec_gal', 'ra_gal']
+            df = df.drop(columns=columns_to_drop, axis=1)    
+            
+        #convert to magnitudes
+        df[bands]= -2.5*np.log10(df[bands])-48.6
+        if 'vis' in df.columns:
+            df['vis']= -2.5*np.log10(df['vis'])-48.6
+        #Drop NaN
+        df=df.dropna(axis=0,how='any')
+        
+        #Filter data (Mag_i < 25, z<1)
+        df=df[df['i']< 25]
+        if 'observed_redshift_gal' in df.columns:
+            df=df[df['observed_redshift_gal']<1]
 
         return df
+    
+    def _get_colors(self):
+
+        try:
+            # Check if all required columns are present
+            if all(col in self.cat_photometry.columns for col in ['vis', 'observed_redshift_gal']):
+                colors_df = pd.DataFrame({
+                    'observed_redshift_gal': self.cat_photometry['observed_redshift_gal'],
+                    'Mag_i': self.cat_photometry['vis'],
+                    'g-r': self.cat_photometry['g'] - self.cat_photometry['r'],
+                    'r-i': self.cat_photometry['r'] - self.cat_photometry['i'],
+                    'i-z': self.cat_photometry['i'] - self.cat_photometry['z'],
+                    'z-y': self.cat_photometry['z'] - self.cat_photometry['y'],
+                    'y-j': self.cat_photometry['y'] - self.cat_photometry['j'],
+                    'j-h': self.cat_photometry['j'] - self.cat_photometry['h']
+                })
+            else:
+                raise ValueError("Missing required columns")
+        except KeyError:
+            # Handle the case where some columns are missing
+            colors_df = pd.DataFrame({
+                'g-r': self.cat_photometry['g'] - self.cat_photometry['r'],
+                'r-i': self.cat_photometry['r'] - self.cat_photometry['i'],
+                'i-z': self.cat_photometry['i'] - self.cat_photometry['z'],
+                'z-y': self.cat_photometry['z'] - self.cat_photometry['y']
+            })   
+        return colors_df
         
-    def _get_colors(self, filetype='csv', pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv', df= 'None', *args):
-        #Transform raw data
-        if filetype == 'csv':
-            parquet = pd.read_csv(str(pathfile),sep =',', header=0, comment='#')
-        elif filetype == 'parquet':
-            parquet = pd.read_parquet(str(pathfile),sep =',', header=0, comment='#')
-        elif filetype == 'dataframe':
-            parquet = df 
-        else: 
-            raise ValueError("Only filetype =='csv' and 'parquet' are supported")
+        
+        
+
+    def _get_colors(self):
+        
+        
+        
+
             
         if 'i' in parquet.columns and 'g' in parquet.columns and 'r' in parquet.columns and 'z' in parquet.columns and 'h' in parquet.columns and 'j' in parquet.columns and 'y' in parquet.columns:
             parquet_labeled=parquet
@@ -109,6 +164,9 @@ class MTL_photoz:
         if 'observed_redshift_gal' in filtered_parquet.columns:
             filtered_parquet=filtered_parquet[filtered_parquet['observed_redshift_gal']<1]
         dataset = filtered_parquet
+        
+        
+        
         #Create colour dataframe
         if 'vis' in parquet_labeled.columns and 'observed_redshift_gal' in parquet_labeled.columns:
             colors_df = pd.DataFrame(np.c_[dataset['observed_redshift_gal'],dataset['vis'],dataset['g']-dataset['r'],dataset['r']-dataset['i'],dataset['i']-dataset['z'], dataset['z']-dataset['y'], dataset['y']-dataset['j'],dataset['j']-dataset['h']], columns=['observed_redshift_gal','Mag_i','g-r','r-i','i-z','z-y','y-j','j-h'])

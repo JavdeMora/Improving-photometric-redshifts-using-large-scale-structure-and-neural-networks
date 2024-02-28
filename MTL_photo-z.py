@@ -38,13 +38,6 @@ class MTL_photoz:
         self.cat_photometry=cat_photometry
         self.cat_colors =self._get_colors()
         
-        
-        
-        cat=self._get_colors(pathfile=pathfile)
-        self.cat=cat
-        self.test_input=torch.Tensor(self.cat.loc[0][['g-r','r-i','i-z','z-y','y-j','j-h']].values)# esto es solo para testear
-        
-        
     def _get_photometry_dataset(self, pathfile, bands=['i', 'g', 'r', 'z', 'h', 'j', 'y']):
         """
         Read photometry dataset from file.

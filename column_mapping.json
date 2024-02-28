@@ -1,0 +1,16 @@
+{
+    "i": "lsst_i_el_model3_ext_odonnell_ext",
+    "g": "lsst_g_el_model3_ext_odonnell_ext",
+    "r": "lsst_r_el_model3_ext_odonnell_ext",
+    "z": "lsst_z_el_model3_ext_odonnell_ext",
+    "h": "euclid_nisp_h_el_model3_ext",
+    "j": "euclid_nisp_j_el_model3_ext_odonnell_ext",
+    "y": "euclid_nisp_y_el_model3_ext_odonnell_ext",
+    "err_i": "lsst_i_el_model3_ext_odonnell_ext_error_realization",
+    "err_g": "lsst_g_el_model3_ext_odonnell_ext_error_realization",
+    "err_r": "lsst_r_el_model3_ext_odonnell_ext_error_realization",
+    "err_z": "lsst_z_el_model3_ext_odonnell_ext_error_realization",
+    "err_h": "euclid_nisp_h_el_model3_ext_error_realization",
+    "err_j": "euclid_nisp_j_el_model3_ext_odonnell_ext_error_realization",
+    "err_y": "euclid_nisp_y_el_model3_ext_odonnell_ext_error_realization"
+}

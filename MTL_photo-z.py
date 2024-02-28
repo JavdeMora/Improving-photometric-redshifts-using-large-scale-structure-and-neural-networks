@@ -17,17 +17,57 @@ from Photo_z_architecture import photoz_network
 
 
 class MTL_photoz:
-    def __init__(self, photoz_hlayers, photoz_num_gauss,epochs,lr=1e-3 ,batch_size = 100, pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'):
+    def __init__(self, 
+                 photoz_hlayers, 
+                 photoz_num_gauss,
+                 epochs,
+                 lr=1e-3,
+                 batch_size=100, 
+                 pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'
+                ):
+        
+        
         self.net_photoz = photoz_network(photoz_hlayers, photoz_num_gauss).cuda()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
-        cat=self._get_colorsdf(pathfile=pathfile)
+        
+        
+        cat_photometry=self._get_photometry_dataset(pathfile)
+        self.cat_photometry=cat_photometry
+        
+        
+        
+        cat=self._get_colors(pathfile=pathfile)
         self.cat=cat
         self.test_input=torch.Tensor(self.cat.loc[0][['g-r','r-i','i-z','z-y','y-j','j-h']].values)# esto es solo para testear
         
-    def _get_colorsdf(self, filetype='csv', pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv', df= 'None', *args):
+        
+    def _get_photometry_dataset(self, pathfile):
+        """
+        Read photometry dataset from file.
+
+        Args:
+            pathfile (str): Path to the dataset file.
+
+        Returns:
+            pandas.DataFrame: Photometry dataset.
+        """
+        # Determine the file extension
+        file_extension = os.path.splitext(pathfile)[1]
+
+        # Read the dataset based on the file type
+        if file_extension == '.csv':
+            df = pd.read_csv(str(pathfile), sep=',', header=0, comment='#')
+        elif file_extension == '.parquet':
+            df = pd.read_parquet(str(pathfile), sep=',', header=0, comment='#')
+        else:
+            raise ValueError("Only filetypes '.csv' and '.parquet' are supported")
+
+        return df
+        
+    def _get_colors(self, filetype='csv', pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv', df= 'None', *args):
         #Transform raw data
         if filetype == 'csv':
             parquet = pd.read_csv(str(pathfile),sep =',', header=0, comment='#')
@@ -157,7 +197,7 @@ class MTL_photoz:
         j=float(input('Enter flux j: '))
         y=float(input('Enter flux y: '))
         df = pd.DataFrame(np.array([[i, g, r, z, h, j, y]]), columns=['i', 'g', 'r', 'z', 'h', 'j', 'y'])
-        test_input=self._get_colorsdf(filetype='dataframe', df= df)
+        test_input=self._get_colors(filetype='dataframe', df= df)
         
         logalpha, mu, logsig =  self.net_photoz(torch.Tensor(test_input.values).to(self.device))
         #Calculate alpha

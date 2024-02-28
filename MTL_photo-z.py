@@ -263,7 +263,7 @@ class MTL_photoz:
         galaxy_pdf = np.zeros(shape=x.shape)
         alpha= alpha / alpha.sum()
 
-        for i in range(len(mu[pick_galaxy])):
+        for i in range(len(mu[0])):
             muGauss = mu[0][i]
             sigmaGauss = sigma[0][i]
             Gauss = stats.norm.pdf(x, muGauss, sigmaGauss)
@@ -290,3 +290,26 @@ class MTL_photoz:
             
         return zmean, galaxy_pdf_norm
 
+
+    def pred_photoz_arr(self, test_colors,plot=True):
+        """
+        Predict redshift using flux inputs.
+
+        Args:
+            plot (bool): Whether to plot the predicted redshift distribution. Default is True.
+
+        Returns:
+            None
+        """
+        # Predict redshift
+        logalpha, mu, logsig = self.net_photoz(torch.Tensor(test_colors).to(self.device))
+
+        # Convert predictions to numpy arrays
+        alpha = np.exp(logalpha.detach().cpu().numpy())
+        sigma = np.exp(logsig.detach().cpu().numpy())
+        mu = mu.detach().cpu().numpy()
+
+        # Calculate mean redshift
+        zmean = (alpha * mu).sum(1)
+
+        return zmean

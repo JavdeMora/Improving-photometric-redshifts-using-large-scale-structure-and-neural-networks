@@ -164,112 +164,129 @@ class MTL_photoz:
         return loader_train, loader_val, loader_test
 
 
-    def train_photoz(self, test_size=0.2, val_size=0.25, *args): #argumento solo catalogo
-        loader_train, loader_val = self._get_loaders(test_size, val_size, self.batch_size)
-        net =  self.net_photoz.cuda()
-        train_losses = [] 
-        alpha_list = []
-        mu_list = []
-        ztrue_list = []
-        optimizer = optim.Adam(net.parameters(), lr=self.lr) 
+    def train_photoz(self, test_size=0.2, val_size=0.25, *args):
+        """
+        Train the photo-z prediction model.
+
+        Args:
+            test_size (float): The proportion of the dataset to include in the test split.
+            val_size (float): The proportion of the training dataset to include in the validation split.
+            *args: Additional arguments.
+
+        Returns:
+            None
+        """
+        # Get data loaders for training and validation sets
+        self.loader_train, self.loader_val, self.loader_test = self._get_loaders(test_size, 
+                                                                                 val_size, 
+                                                                                 self.batch_size)
+
+        # Transfer model to GPU
+        self.net = self.net_photoz.cuda()
+
+        # Initialize lists to store training losses and predicted parameters
+        self.train_losses = [] 
+
+        # Define optimizer and learning rate scheduler
+        optimizer = optim.Adam(self.net.parameters(), lr=self.lr) 
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
 
+        # Training loop
         for epoch in range(self.epochs):
-            for datain, xeval in loader_train:
+            for datain, xeval in self.loader_train:
                 optimizer.zero_grad() 
-                logalpha, mu, logsig = net(datain.to(self.device))
+                logalpha, mu, logsig = self.net(datain.to(self.device))
                 sig = torch.exp(logsig)
 
+                # Compute log probabilities
                 log_prob = logalpha[:,:,None] - logsig[:,:,None] - 0.5*((xeval.to(self.device)[:,None] - mu[:,:,None])/sig[:,:,None])**2
                 log_prob = torch.logsumexp(log_prob, 1)
                 loss = - log_prob.mean()
 
+                # Backpropagation and optimization
                 loss.backward()
                 optimizer.step()
                 train_loss = loss.item()
-                train_losses.append(train_loss)
+                self.train_losses.append(train_loss)
 
+            # Update learning rate
             scheduler.step()
 
+            # Validation
             net.eval()
-            val_losses = []
-            logalpha_list = []
-            out_pred, out_true = [],[]
-            
+            self.val_losses = []
+
             with torch.no_grad():
                 for xval, yval in loader_val:
                     logalpha, mu, logsig = net(xval.to(self.device))
                     sig = torch.exp(logsig)
 
+                    # Compute log probabilities
                     log_prob = logalpha[:,:,None] - logsig[:,:,None] - 0.5*((yval.to(self.device)[:,None] - mu[:,:,None])/sig[:,:,None])**2
                     log_prob = torch.logsumexp(log_prob, 1)
                     loss = - log_prob.mean()
                     val_loss = loss.item()
-                    val_losses.append(val_loss)
+                    self.val_losses.append(val_loss)
 
+                # Print training and validation losses
                 if epoch % 1 == 0:
                     print('Epoch [{}/{}], Train Loss: {:.4f}, Val Loss: {:.4f}'.format(epoch+1, self.epochs, train_loss, val_loss))
                     
-    def pred_photoz(self, plot=True):
-        i=float(input('Enter flux i: '))
-        g=float(input('Enter flux g: '))
-        r=float(input('Enter flux r: '))
-        z=float(input('Enter flux z: '))
-        h=float(input('Enter flux h: '))
-        j=float(input('Enter flux j: '))
-        y=float(input('Enter flux y: '))
-        df = pd.DataFrame(np.array([[i, g, r, z, h, j, y]]), columns=['i', 'g', 'r', 'z', 'h', 'j', 'y'])
-        test_input=self._get_colors(filetype='dataframe', df= df)
-        
-        logalpha, mu, logsig =  self.net_photoz(torch.Tensor(test_input.values).to(self.device))
-        #Calculate alpha
+                    
+                    
+    def pred_photoz(self, test_colors,plot=True):
+        """
+        Predict redshift using flux inputs.
+
+        Args:
+            plot (bool): Whether to plot the predicted redshift distribution. Default is True.
+
+        Returns:
+            None
+        """
+        # Predict redshift
+        logalpha, mu, logsig = self.net_photoz(torch.Tensor(test_colors).to(self.device))
+
+        # Convert predictions to numpy arrays
         alpha = np.exp(logalpha.detach().cpu().numpy())
-        #Calculate sigma
         sigma = np.exp(logsig.detach().cpu().numpy())
-        #Calculate mu
         mu = mu.detach().cpu().numpy()
-        #Calcuate zmean
-        zmean = (alpha*mu).sum(1)
-        #Create dataframe
-        df = pd.DataFrame(np.c_[zmean], columns = ['z'])
-         #Calculate and append error
-        x = np.linspace(0, 1, 1000) #ya que filtramos catalogo a z<1
+
+        # Calculate mean redshift
+        zmean = (alpha * mu).sum(1)
+
+        # Create DataFrame for predicted redshifts
+        df = pd.DataFrame(np.c_[zmean], columns=['z'])
+
+        # Calculate and append error
+        x = np.linspace(0, 1, 1000)
         galaxy_pdf = np.zeros(shape=x.shape)
-        mean_pdf=0
-        pick_galaxy=0
+        alpha= alpha / alpha.sum()
+
         for i in range(len(mu[pick_galaxy])):
-            muGauss = mu[pick_galaxy][i]
-            sigmaGauss = sigma[pick_galaxy][i]
+            muGauss = mu[0][i]
+            sigmaGauss = sigma[0][i]
             Gauss = stats.norm.pdf(x, muGauss, sigmaGauss)
-            coefficients = alpha[pick_galaxy][i]
-            mean_pdf= mean_pdf + muGauss*coefficients
-            coefficients /= coefficients.sum()# in case these did not add up to 1
-            Gauss= coefficients * Gauss
-            galaxy_pdf = galaxy_pdf + Gauss
+            coeff = alpha[0][i]
+            Gauss = coeff * Gauss
+            galaxy_pdf += Gauss
 
+        galaxy_pdf_norm = galaxy_pdf / galaxy_pdf.sum()
 
-            #plt.plot(x, stats.norm.pdf(x, muGauss, sigmaGauss))
-        galaxy_pdf_norm=galaxy_pdf/galaxy_pdf.sum()
+        # Print mean of the distribution
+        print("Mean of the distribution:", mean_pdf)
 
-        print("Mean of the distribution:", mean_pdf)  
-
-        if plot== True:
+        # Plot predicted redshift distribution
+        if plot:
             fig3 = plt.figure(figsize=(10, 6))
-            plt.plot(x,galaxy_pdf_norm, color='black', label='galaxy_pdf_norm')
-            # Add title and labels with LaTeX-style formatting
+            plt.plot(x, galaxy_pdf_norm, color='black', label='galaxy_pdf_norm')
             plt.xlabel(f'$z$', fontsize=18)
             plt.xticks(fontsize=18)
             plt.yticks(fontsize=18)
-            plt.ylabel(f' $p(z)$', fontsize=18)
-            #z_true_line = plt.axvline(df.loc['zt'], color='r', linestyle=':', label='z_true')
-            mean_pdf_line=plt.axvline(mean_pdf,color='g',linestyle='-', label='mean')
+            plt.ylabel(f'$p(z)$', fontsize=18)
+            mean_pdf_line = plt.axvline(mean_pdf, color='g', linestyle='-', label='mean')
             plt.legend()
-            plt.show()   
+            plt.show() 
+            
+        return zmean, galaxy_pdf_norm
 
-    #def get_training_distances(self, *args):
-        # Function body...
-    #def get_training_distances(self, *args):
-        # Function body...
-  def train_clustering(self,*args):
-  training_data=self.get_training_distances
-  def train_mtl(self, *args):im

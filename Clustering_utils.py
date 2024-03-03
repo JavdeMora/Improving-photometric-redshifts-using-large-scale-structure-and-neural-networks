@@ -15,12 +15,14 @@ sys.path.append('clustering_architecture.py')
 from clustering_architecture import network_dists
 
 class clustering:
-    def __init__(self, cluster_hlayers, epochs, lr=1e-3 ,batch_size = 100, pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'):
+    def __init__(self, cluster_hlayers, epochs, lr=1e-5 ,batch_size = 100, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'):
         self.net_2pcf= network_dists(cluster_hlayers).cuda()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
+        
+        self.distances_array=self._get_distances_array()
     
     def _get_distances_array(self, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'):
         d = np.load(pathfile_distances)#[:,:100] <-- if you want to test #(400, 100000)
@@ -77,7 +79,7 @@ class clustering:
         return distances_array
     
     def train_clustering(self, epochs=2, Nobj=10, batch_size= 500, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy',*args):
-        distances_array=self._get_distances_array(pathfile_distances=pathfile_distances,pathfile_drand=pathfile_drand)
+        distances_array=self.distances_array
 
         clustnet= self.net_2pcf
 

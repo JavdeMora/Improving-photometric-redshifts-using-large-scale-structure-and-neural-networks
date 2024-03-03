@@ -58,9 +58,3 @@ class photoz_network(torch.nn.Module):
         logalpha = logalpha - torch.logsumexp(logalpha, 1)[:, None]
 
         return logalpha, mu, logsig
-        
-        logalpha = logalpha - torch.logsumexp(logalpha,1)[:,None] 
-
-
-        
-        return logalpha, mu, logsig  

@@ -16,7 +16,7 @@ from Photo_z_architecture import photoz_network
 
 
 
-class MTL_photoz:
+class photoz:
     def __init__(self, 
                  photoz_hlayers, 
                  photoz_num_gauss,

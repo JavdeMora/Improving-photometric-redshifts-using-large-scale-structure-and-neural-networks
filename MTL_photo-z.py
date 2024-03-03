@@ -34,8 +34,7 @@ class MTL_photoz:
         self.lr = lr
         
         
-        cat_photometry=self._get_photometry_dataset(pathfile)
-        self.cat_photometry=cat_photometry
+        self.cat_photometry=self._get_photometry_dataset(pathfile)
         self.cat_colors =self._get_colors()
         
     def _get_photometry_dataset(self, pathfile, bands=['i', 'g', 'r', 'z', 'h', 'j', 'y']):
@@ -60,12 +59,12 @@ class MTL_photoz:
             raise ValueError("Only filetypes '.csv' and '.parquet' are supported")
             
         # Check if all required columns are present in the DataFrame
-        column_mapping = 
+        json_file_path='/nfs/pic.es/user/j/jdemora/Test git/column_mapping.json'
         required_columns = set(bands)
         if ~required_columns.issubset(df.columns):
             # Rename columns based on the provided mapping
             with open(json_file_path, 'r') as json_file:
-                column_mapping = json.load('column_mapping.json')
+                column_mapping = json.load(json_file)
             df = df.rename(columns=column_mapping)
                         
             # Add error columns to corresponding magnitude columns
@@ -73,9 +72,9 @@ class MTL_photoz:
                 df[b]=df[b]+df['err_'+b]    
             
             # Drop error columns and other unnecessary columns
-            columns_to_drop = [col for col in df.columns if df.startswith('err_')] + ['dec_gal', 'ra_gal']
-            df = df.drop(columns=columns_to_drop, axis=1)    
-            
+            columns_to_drop = [col for col in df.columns if col.startswith('err_')] + ['dec_gal', 'ra_gal']
+            df = df.drop(columns=columns_to_drop, axis=1)
+        
         #convert to magnitudes
         df[bands]= -2.5*np.log10(df[bands])-48.6
         if 'vis' in df.columns:
@@ -170,7 +169,7 @@ class MTL_photoz:
             None
         """
         # Get data loaders for training and validation sets
-        self.loader_train, self.loader_val, self.loader_test = self._get_loaders(test_size, 
+        self.loader_train, self.loader_val, self.loader_test = self._get_loaders_photoz(test_size, 
                                                                                  val_size, 
                                                                                  self.batch_size)
 
@@ -206,12 +205,12 @@ class MTL_photoz:
             scheduler.step()
 
             # Validation
-            net.eval()
+            self.net.eval()
             self.val_losses = []
 
             with torch.no_grad():
-                for xval, yval in loader_val:
-                    logalpha, mu, logsig = net(xval.to(self.device))
+                for xval, yval in self.loader_val:
+                    logalpha, mu, logsig = self.net(xval.to(self.device))
                     sig = torch.exp(logsig)
 
                     # Compute log probabilities
@@ -227,7 +226,7 @@ class MTL_photoz:
                     
                     
                     
-    def pred_photoz(self, test_colors,plot=True):
+    def pred_photoz(self, test_colors,plot=True): #problemas con input de dim=1
         """
         Predict redshift using flux inputs.
 
@@ -238,7 +237,7 @@ class MTL_photoz:
             None
         """
         # Predict redshift
-        logalpha, mu, logsig = self.net_photoz(torch.Tensor(test_colors).to(self.device))
+        logalpha, mu, logsig = self.net_photoz(torch.Tensor(np.array(test_colors)[None, :]).to(self.device))
 
         # Convert predictions to numpy arrays
         alpha = np.exp(logalpha.detach().cpu().numpy())
@@ -255,6 +254,7 @@ class MTL_photoz:
         x = np.linspace(0, 1, 1000)
         galaxy_pdf = np.zeros(shape=x.shape)
         alpha= alpha / alpha.sum()
+        mean_pdf=0
 
         for i in range(len(mu[0])):
             muGauss = mu[0][i]
@@ -263,11 +263,9 @@ class MTL_photoz:
             coeff = alpha[0][i]
             Gauss = coeff * Gauss
             galaxy_pdf += Gauss
+            mean_pdf= mean_pdf + muGauss*coeff
 
         galaxy_pdf_norm = galaxy_pdf / galaxy_pdf.sum()
-
-        # Print mean of the distribution
-        print("Mean of the distribution:", mean_pdf)
 
         # Plot predicted redshift distribution
         if plot:
@@ -304,5 +302,40 @@ class MTL_photoz:
 
         # Calculate mean redshift
         zmean = (alpha * mu).sum(1)
+
+        # Calculate and append error
+        x = np.linspace(0, 1, 1000)
+        galaxy_pdf = np.zeros(shape=x.shape)
+        alpha= alpha / alpha.sum()
+        mean_pdf=0
+        print(len(test_colors))
+        
+        for j in range(len(test_colors)):
+            pick_galaxy=j
+            x = np.linspace(0, 1, 1000) #ya que filtramos catalogo a z<1
+            galaxy_pdf = np.zeros(shape=x.shape)
+            mean_pdf=0
+            for i in range(len(mu[0])):
+                muGauss = mu[pick_galaxy][i]
+                sigmaGauss = sigma[pick_galaxy][i]
+                Gauss = stats.norm.pdf(x, muGauss, sigmaGauss)
+                coeff = alpha[pick_galaxy][i]
+                Gauss = coeff * Gauss
+                galaxy_pdf += Gauss
+                mean_pdf= mean_pdf + muGauss*coeff
+
+            galaxy_pdf_norm = galaxy_pdf / galaxy_pdf.sum()
+            
+            # Plot predicted redshift distribution
+            if plot:
+                fig3 = plt.figure(figsize=(10, 6))
+                plt.plot(x, galaxy_pdf_norm, color='black', label='galaxy_pdf_norm')
+                plt.xlabel(f'$z$', fontsize=18)
+                plt.xticks(fontsize=18)
+                plt.yticks(fontsize=18)
+                plt.ylabel(f'$p(z)$', fontsize=18)
+                mean_pdf_line = plt.axvline(mean_pdf, color='g', linestyle='-', label='mean')
+                plt.legend()
+                plt.show()
 
         return zmean

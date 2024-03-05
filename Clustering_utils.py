@@ -15,43 +15,61 @@ sys.path.append('clustering_architecture.py')
 from clustering_architecture import network_dists
 
 class clustering:
-    def __init__(self, cluster_hlayers, epochs, lr=1e-5 ,batch_size = 100, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'):
+    def __init__(self, 
+                 cluster_hlayers, 
+                 epochs, 
+                 lr=1e-5 ,
+                 batch_size = 500, 
+                 pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', 
+                 pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'
+                ):
+                    
         self.net_2pcf= network_dists(cluster_hlayers).cuda()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
         
-        self.distances_array=self._get_distances_array()
+        self.distances_array=self._get_distances_array(pathfile_distances, pathfile_drand)
     
-    def _get_distances_array(self, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'):
+    def _get_distances_array(self, pathfile_distances, pathfile_drand):
+        """
+        Loads distances and random distances arrays from files.
+
+        Args:
+            pathfile_distances (str): Path to the distances file.
+            pathfile_drand (str): Path to the random distances file.
+            
+        Returns:
+            numpy array: of randomly ordered buckets with [distance value, true/random distance classification, jacknife, weight]
+        """
+        #Load distances arrays
         d = np.load(pathfile_distances)#[:,:100] <-- if you want to test #(400, 100000)
         drand = np.load(pathfile_drand)#[:,:100] <-- if you want to test
-    
+        #Flatten array 
         distA = d.flatten()
         distB = drand.flatten()
-    
+        #Define angular separation limits and number of edges
         min_sep= 0.03
         max_sep = 26
         nedges=8
-    
         th = np.linspace(np.log10(min_sep), np.log10(max_sep), nedges)
         theta = 10**th * (1./60.)
-    
+        
+        #Compute weights
         Ndd = np.array([len(distA[(distA>theta[k])&(distA<theta[k+1])]) for k in range(len(theta)-1)])
         Ndd = np.append(Ndd,len(distA[(distA>theta[-1])]))
         Pdd = Ndd / Ndd.sum()
         wdd = Pdd.max() / Pdd 
-    
+        #Compute ranges
         ranges =  [(theta[k],theta[k+1]) for k in range(len(theta)-1)]
         ranges.append((theta[-1],1.1))
         ranges = np.array(ranges)
         weights = wdd
-    
+        
+        # Labeling arrays
         arr1 = d.copy().T
         arr2 = drand.copy().T
-    
-        # Labeling arrays
         labeled_arr1 = np.column_stack((arr1, np.zeros(arr1.shape[0], dtype=int)))  # Appending a column of 0s
         labeled_arr2 = np.column_stack((arr2, np.ones(arr2.shape[0], dtype=int)))  # Appending a column of 1s
     
@@ -69,46 +87,58 @@ class clustering:
     
         # Converting the list to a NumPy array
         distances_array = np.array(result_list)
-    
+        
+        #Adding weights to each record
         range_idx = np.searchsorted(ranges[:, 1], distances_array[:,0], side='right')
-    
         w = weights[range_idx]
         distances_array = np.c_[distances_array, w.reshape(len(w),1)]
         distances_array = torch.Tensor(distances_array)
         
         return distances_array
     
-    def train_clustering(self, epochs=2, Nobj=10, batch_size= 500, pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy',*args):
+    def train_clustering(self, Nobj=10, *args):
+        """
+        Train the clustering prediction model.
+         Args:
+            Nobj (float): Preguntar a Laura.
+            *args: Additional arguments.
+
+        Returns:
+            None
+        """
+        #Call distances array
         distances_array=self.distances_array
-
-        clustnet= self.net_2pcf
-
+        # Transfer model to GPU
+        self.clustnet= self.net_2pcf.cuda()
+        
+        # Define optimizer, learning rate scheduler and loss function
         optimizer = optim.Adam(clustnet.parameters(), lr=self.lr)# deberia separar entre lr photoz y lr clustering
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1200, gamma=0.01)
         CELoss = nn.CrossEntropyLoss(reduction='none')
         Nobj = 10
-        for epoch in range(epochs):#deberia separar entre epochs photoz y epochs clustering
+        # Training loop
+        for epoch in range(self.epochs):#deberia separar entre epochs photoz y epochs clustering
             print('starting epoch', epoch)
-
+            #Creating loader
             distances_array_sub = distances_array[np.random.randint(0, distances_array.shape[0], distances_array.shape[0])]#revisar la size (yo he usado todas las distancias para entrenar, preguntar a laura)
-
             data_training = TensorDataset(distances_array_sub)
-            loader = DataLoader(data_training, batch_size=500, shuffle=True)
+            loader = DataLoader(data_training, batch_size=self.batch_size, shuffle=True)
 
-            #dist, class_, jk, w
+            # iterating for each element on the distances array: dist, class, jk, w
             for x in loader:  
                 x = x[0]
-
                 d, dclass, jk, w = x[:,0], x[:,1], x[:,2], x[:,3]
                 optimizer.zero_grad()
-                c = clustnet(d.unsqueeze(1).cuda(), jk.type(torch.LongTensor).cuda())#
-
+                c = self.clustnet(d.unsqueeze(1).cuda(), jk.type(torch.LongTensor).cuda())#
+                #Computing loss
                 loss = CELoss(c.squeeze(1),dclass.type(torch.LongTensor).cuda())
                 wloss = (w.cuda()*loss).mean()
-
+                # Backpropagation and optimization
                 wloss.backward()
                 optimizer.step()
+            # Update learning rate
             scheduler.step()
+            #Print training loss
             print(wloss.item())
             
     def pred_clustering(self, min_sep= 0.03, max_sep = 26, nedges=8):

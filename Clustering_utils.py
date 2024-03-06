@@ -16,6 +16,9 @@ from clustering_architecture import network_dists
 
 class clustering:
     def __init__(self, 
+                 min_sep,= 0.03
+                 max_sep= 26,
+                 nedges= 8,
                  cluster_hlayers, 
                  epochs, 
                  lr=1e-5 ,
@@ -26,13 +29,36 @@ class clustering:
                     
         self.net_2pcf= network_dists(cluster_hlayers).cuda()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.min_sep= min_sep
+        self.max_sep= max_sep
+        self.nedges= nedges
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
+        self.d, self.drand = self._load_distances_array()
         
-        self.distances_array=self._get_distances_array(pathfile_distances, pathfile_drand)
-    
-    def _get_distances_array(self, pathfile_distances, pathfile_drand):
+        
+    def _load_distances_array(self,  pathfile_distances, pathfile_drand):
+       """
+        Loads real and random distances from files.
+
+        Args:
+            pathfile_distances (str): Path to the distances file.
+            pathfile_drand (str): Path to the random distances file.
+            
+        Returns:
+            numpy array: real distances for a sky area divided in 400 jacknifes
+            numpy array: random distances for a sky area divided in 400 jacknifes
+            
+        """ 
+        #Load distances arrays
+        d = np.load(pathfile_distances)#[:,:100] <-- if you want to test #(400, 100000)
+        drand = np.load(pathfile_drand)#[:,:100] <-- if you want to test
+        
+        #Define angular separation limits and number of edges
+        return d, drand
+        
+    def _get_distances_array(self):
         """
         Loads distances and random distances arrays from files.
 
@@ -43,17 +69,15 @@ class clustering:
         Returns:
             numpy array: of randomly ordered buckets with [distance value, true/random distance classification, jacknife, weight]
         """
-        #Load distances arrays
-        d = np.load(pathfile_distances)#[:,:100] <-- if you want to test #(400, 100000)
-        drand = np.load(pathfile_drand)#[:,:100] <-- if you want to test
+        #Call distances arrays
+        d = self.d
+        drand = self.drand
         #Flatten array 
         distA = d.flatten()
         distB = drand.flatten()
+        
         #Define angular separation limits and number of edges
-        min_sep= 0.03
-        max_sep = 26
-        nedges=8
-        th = np.linspace(np.log10(min_sep), np.log10(max_sep), nedges)
+        th = np.linspace(np.log10(self.min_sep), np.log10(self.max_sep), self.nedges)
         theta = 10**th * (1./60.)
         
         #Compute weights
@@ -107,7 +131,7 @@ class clustering:
             None
         """
         #Call distances array
-        distances_array=self.distances_array
+        distances_array=self._get_distances_array()
         # Transfer model to GPU
         self.clustnet= self.net_2pcf.cuda()
         
@@ -141,21 +165,64 @@ class clustering:
             #Print training loss
             print(wloss.item())
             
-    def pred_clustering(self, min_sep= 0.03, max_sep = 26, nedges=8):
+    def pred_clustering(self, min_sep_input = self.min_sep, min_sep_input = self.max_sep, nedges_input = self.nedges, plot=True):
+        """
+        Predict redshift using minimum and maximum separation inputs and the number of edges.
+
+        Args:
+            plot (bool): Whether to plot the predicted redshift distribution. Default is True.
+
+        Returns:
+            None
+        """
         clustnet=self.net_2pcf
-        th_test = np.linspace(np.log10(min_sep), np.log10(max_sep), nedges)
+        #Compute the input in angular units
+        th_test = np.linspace(np.log10(min_sep_input), np.log10(max_sep_input), nedges_input)
         thetac_test = 10**np.array([(th_test[i]+th_test[i+1])/2 for i in range(len(th_test)-1)])
         thetac_test = thetac_test/60
         inp_test = torch.Tensor(thetac_test)
-        
+
+        #Create empty array for predictions
         preds=np.empty(shape=(400,7,2))
+        #Make prediction with the inputs for each jacknife
         for jk in range(400):
             jkf = torch.LongTensor(jk*np.ones(shape=inp_test.shape))
             c = clustnet(inp_test.unsqueeze(1).cuda(),jkf.cuda())
             s = nn.Softmax(1)
             p = s(c).detach().cpu().numpy()
             preds[jk]=p
-            
+        #Computing 2PCF    
         pred_ratio = preds[:,:,0]/(1-preds[:,:,0])-1
+
+        #Plot 2PCF 
+        if plot:
+            #Calling real data
+            distA = self.d.flatten()
+            distB = self.drand.flatten()
+            #Compute 2PCF using the real data
+            th = np.linspace(np.log10(self.min_sep), np.log10(self.max_sep), self.nedges)
+            thetac = 10**np.array([(th[i]+th[i+1])/2 for i in range(len(th)-1)])
+            theta = 10**th * (1./60.)
+            thetac = thetac/60
+            ratio_dists = np.array([len(distA[(distA>theta[k])&(distA<theta[k+1])]) / len(distB[(distB>theta[k])&(distB<theta[k+1])]) for k in range(len(theta)-1)])
+            
+            network_color = 'crimson'
+            true_color = 'navy'
+            fig=plt.figure(figsize=(10, 6))
+            #Plot predicted 2PCF 
+            plt.errorbar(thetac_test, pred_ratio_jk.mean(0), pred_ratio_jk.std(0), color=network_color, ls='--', label='$p(DD)/p(RR)$ - Network', marker='.', markersize=8)
+            
+            # Plot 2PCF conventional method
+            plt.plot(thetac, ratio_dists - 1, color=true_color, label='$p(DD)/p(RR)$ - True', linewidth=2, marker='o', markersize=8)
+            
+            plt.xscale('log')
+            plt.ylabel(r'$w(\theta)$', fontsize=16)
+            plt.xlabel(r'$\theta$', fontsize=16)
+            plt.title('Comparison of Network Predictions and True Values', fontsize=18)
+            plt.grid(which='both', linestyle='--', alpha=0.7)
+            plt.legend()
+            plt.tick_params(axis='both', which='both', labelsize=12)
+            plt.show()
+
         return pred_ratio
     

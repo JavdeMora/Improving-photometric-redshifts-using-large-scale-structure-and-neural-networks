@@ -120,7 +120,7 @@ class clustering:
         
         return distances_array
     
-    def train_clustering(self, Nobj=10, *args):
+    def train_clustering(self, Nobj='all', *args):
         """
         Train the clustering prediction model.
          Args:
@@ -139,7 +139,10 @@ class clustering:
         optimizer = optim.Adam(clustnet.parameters(), lr=self.lr)# deberia separar entre lr photoz y lr clustering
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1200, gamma=0.01)
         CELoss = nn.CrossEntropyLoss(reduction='none')
-        Nobj = 10
+        if Nobj=='all':
+            Nobj = distances_array.shape[0]
+        else:
+            Nobj = float(Nobj)
         # Training loop
         for epoch in range(self.epochs):#deberia separar entre epochs photoz y epochs clustering
             print('starting epoch', epoch)

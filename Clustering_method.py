@@ -157,10 +157,10 @@ class clustering:
                 x = x[0]
                 d, dclass, jk, w = x[:,0], x[:,1], x[:,2], x[:,3]
                 optimizer.zero_grad()
-                c = self.net_2pcf(d.unsqueeze(1).cuda(), jk.type(torch.LongTensor).cuda())#
+                c = self.net_2pcf(d.unsqueeze(1).to(self.device), jk.type(torch.LongTensor).to(self.device))#
                 #Computing loss
-                loss = CELoss(c.squeeze(1),dclass.type(torch.LongTensor).cuda())
-                wloss = (w.cuda()*loss).mean()
+                loss = CELoss(c.squeeze(1),dclass.type(torch.LongTensor).to(self.device))
+                wloss = (w.to(self.device)*loss).mean()
                 # Backpropagation and optimization
                 wloss.backward()
                 optimizer.step()
@@ -187,7 +187,7 @@ class clustering:
         #Make prediction with the inputs for each jacknife
         for jk in range(400):
             jkf = torch.LongTensor(jk*np.ones(shape=inp_test.shape))
-            c = clustnet(inp_test.unsqueeze(1).cuda(),jkf.cuda())
+            c = clustnet(inp_test.unsqueeze(1).to(self.device),jkf.to(self.device))
             s = nn.Softmax(1)
             p = s(c).detach().cpu().numpy()
             preds[jk]=p

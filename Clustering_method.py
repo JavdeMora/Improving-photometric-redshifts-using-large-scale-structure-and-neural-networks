@@ -27,8 +27,9 @@ class clustering:
                  pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'
                 ):
                     
-        self.net_2pcf= network_dists(cluster_hlayers).cuda()
+        
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.net_2pcf= network_dists(cluster_hlayers).to(self.device)
         self.min_sep= min_sep
         self.max_sep= max_sep
         self.nedges= nedges
@@ -130,10 +131,10 @@ class clustering:
         Returns:
             None
         """
+        self.net_2pcf.train()
         #Call distances array
         distances_array=self._get_distances_array()
         # Transfer model to GPU
-        self.clustnet= self.net_2pcf.cuda()
         
         # Define optimizer, learning rate scheduler and loss function
         optimizer = optim.Adam(clustnet.parameters(), lr=self.lr)# deberia separar entre lr photoz y lr clustering
@@ -156,7 +157,7 @@ class clustering:
                 x = x[0]
                 d, dclass, jk, w = x[:,0], x[:,1], x[:,2], x[:,3]
                 optimizer.zero_grad()
-                c = self.clustnet(d.unsqueeze(1).cuda(), jk.type(torch.LongTensor).cuda())#
+                c = self.net_2pcf(d.unsqueeze(1).cuda(), jk.type(torch.LongTensor).cuda())#
                 #Computing loss
                 loss = CELoss(c.squeeze(1),dclass.type(torch.LongTensor).cuda())
                 wloss = (w.cuda()*loss).mean()
@@ -178,7 +179,7 @@ class clustering:
         Returns:
             None
         """
-        clustnet=self.net_2pcf.eval()
+        self.net_2pcf.eval()
         inp_test = torch.Tensor(theta_test)
 
         #Create empty array for predictions

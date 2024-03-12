@@ -36,6 +36,10 @@ class clustering:
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
+        
+        #This is not going to work. This function has arguments that you are not providing. Instead
+        #of giving arguments to the function, you should define self.pathfile_distances and self.pathfile_drand
+        #and call them inside the function.
         self.d, self.drand = self._load_distances_array()
         
         
@@ -137,7 +141,7 @@ class clustering:
         # Transfer model to GPU
         
         # Define optimizer, learning rate scheduler and loss function
-        optimizer = optim.Adam(clustnet.parameters(), lr=self.lr)# deberia separar entre lr photoz y lr clustering
+        optimizer = optim.Adam(self.net_2pcf.parameters(), lr=self.lr)# deberia separar entre lr photoz y lr clustering
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1200, gamma=0.01)
         CELoss = nn.CrossEntropyLoss(reduction='none')
         if Nobj=='all':
@@ -187,7 +191,7 @@ class clustering:
         #Make prediction with the inputs for each jacknife
         for jk in range(400):
             jkf = torch.LongTensor(jk*np.ones(shape=inp_test.shape))
-            c = clustnet(inp_test.unsqueeze(1).to(self.device),jkf.to(self.device))
+            c = self.net_2pcf(inp_test.unsqueeze(1).to(self.device),jkf.to(self.device))
             s = nn.Softmax(1)
             p = s(c).detach().cpu().numpy()
             preds[jk]=p

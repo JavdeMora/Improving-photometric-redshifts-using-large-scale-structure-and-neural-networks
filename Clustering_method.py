@@ -168,7 +168,7 @@ class clustering:
             #Print training loss
             print(wloss.item())
             
-    def pred_clustering(self, min_sep_input = self.min_sep, min_sep_input = self.max_sep, nedges_input = self.nedges, plot=True):
+    def pred_clustering(self, theta_test):
         """
         Predict redshift using minimum and maximum separation inputs and the number of edges.
 
@@ -178,12 +178,8 @@ class clustering:
         Returns:
             None
         """
-        clustnet=self.net_2pcf
-        #Compute the input in angular units
-        th_test = np.linspace(np.log10(min_sep_input), np.log10(max_sep_input), nedges_input)
-        thetac_test = 10**np.array([(th_test[i]+th_test[i+1])/2 for i in range(len(th_test)-1)])
-        thetac_test = thetac_test/60
-        inp_test = torch.Tensor(thetac_test)
+        clustnet=self.net_2pcf.eval()
+        inp_test = torch.Tensor(theta_test)
 
         #Create empty array for predictions
         preds=np.empty(shape=(400,7,2))
@@ -196,36 +192,6 @@ class clustering:
             preds[jk]=p
         #Computing 2PCF    
         pred_ratio = preds[:,:,0]/(1-preds[:,:,0])-1
-
-        #Plot 2PCF 
-        if plot:
-            #Calling real data
-            distA = self.d.flatten()
-            distB = self.drand.flatten()
-            #Compute 2PCF using the real data
-            th = np.linspace(np.log10(self.min_sep), np.log10(self.max_sep), self.nedges)
-            thetac = 10**np.array([(th[i]+th[i+1])/2 for i in range(len(th)-1)])
-            theta = 10**th * (1./60.)
-            thetac = thetac/60
-            ratio_dists = np.array([len(distA[(distA>theta[k])&(distA<theta[k+1])]) / len(distB[(distB>theta[k])&(distB<theta[k+1])]) for k in range(len(theta)-1)])
-            
-            network_color = 'crimson'
-            true_color = 'navy'
-            fig=plt.figure(figsize=(10, 6))
-            #Plot predicted 2PCF 
-            plt.errorbar(thetac_test, pred_ratio_jk.mean(0), pred_ratio_jk.std(0), color=network_color, ls='--', label='$p(DD)/p(RR)$ - Network', marker='.', markersize=8)
-            
-            # Plot 2PCF conventional method
-            plt.plot(thetac, ratio_dists - 1, color=true_color, label='$p(DD)/p(RR)$ - True', linewidth=2, marker='o', markersize=8)
-            
-            plt.xscale('log')
-            plt.ylabel(r'$w(\theta)$', fontsize=16)
-            plt.xlabel(r'$\theta$', fontsize=16)
-            plt.title('Comparison of Network Predictions and True Values', fontsize=18)
-            plt.grid(which='both', linestyle='--', alpha=0.7)
-            plt.legend()
-            plt.tick_params(axis='both', which='both', labelsize=12)
-            plt.show()
 
         return pred_ratio
     

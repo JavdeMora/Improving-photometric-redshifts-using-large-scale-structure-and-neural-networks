@@ -174,7 +174,7 @@ class clustering:
             
     def pred_clustering(self, theta_test): #WHAT ABOUT THE PLOT
         """
-        Predict redshift using theta_test inputs and the number of edges.
+        Predict 2PCF using theta_test inputs.
 
         Args:
             plot (bool): Whether to plot the predicted redshift distribution. Default is True.

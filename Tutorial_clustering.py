@@ -55,4 +55,4 @@ Model.pred_clustering(
 )
 
 # %%
-#Plot, waiting for fixed plot and training time lowering
+#Plot, waiting for fixed plot and training time decrease

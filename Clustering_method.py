@@ -16,11 +16,11 @@ from clustering_architecture import network_dists
 
 class clustering:
     def __init__(self, 
+                 cluster_hlayers, 
+                 epochs, 
                  min_sep= 0.03,
                  max_sep= 26,
                  nedges= 8,
-                 cluster_hlayers, 
-                 epochs, 
                  lr=1e-5 ,
                  batch_size = 500, 
                  pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', 
@@ -37,32 +37,31 @@ class clustering:
         self.batch_size = batch_size
         self.lr = lr
         
-        #This is not going to work. This function has arguments that you are not providing. Instead
-        #of giving arguments to the function, you should define self.pathfile_distances and self.pathfile_drand
-        #and call them inside the function.
-        self.d, self.drand = self._load_distances_array()
+        #Instead of giving arguments to the function, you should define self.pathfile_distances and self.pathfile_drand
+        #and call them inside the function. --> but then the user couldn't use their own pathfile!
+        self.d, self.drand = self._load_distances_array(pathfile_distances,pathfile_drand)
         
         
-    def _load_distances_array(self,  pathfile_distances, pathfile_drand):
-       """
+    def _load_distances_array(self, pathfile_distances, pathfile_drand):
+        """
         Loads real and random distances from files.
 
         Args:
             pathfile_distances (str): Path to the distances file.
             pathfile_drand (str): Path to the random distances file.
-            
+
         Returns:
             numpy array: real distances for a sky area divided in 400 jacknifes
             numpy array: random distances for a sky area divided in 400 jacknifes
-            
+
         """ 
-        #Load distances arrays
-        d = np.load(pathfile_distances)#[:,:100] <-- if you want to test #(400, 100000)
+        # Load distances arrays
+        d = np.load(pathfile_distances)#[:,:100]<-- if you want to test #(400, 100000)
         drand = np.load(pathfile_drand)#[:,:100] <-- if you want to test
-        
-        #Define angular separation limits and number of edges
+
+        # Define angular separation limits and number of edges
         return d, drand
-        
+
     def _get_distances_array(self):
         """
         Loads distances and random distances arrays from files.
@@ -173,9 +172,9 @@ class clustering:
             #Print training loss
             print(wloss.item())
             
-    def pred_clustering(self, theta_test):
+    def pred_clustering(self, theta_test): #WHAT ABOUT THE PLOT
         """
-        Predict redshift using minimum and maximum separation inputs and the number of edges.
+        Predict redshift using theta_test inputs and the number of edges.
 
         Args:
             plot (bool): Whether to plot the predicted redshift distribution. Default is True.
@@ -183,11 +182,11 @@ class clustering:
         Returns:
             None
         """
-        self.net_2pcf.eval()
-        inp_test = torch.Tensor(theta_test)
+        self.net_2pcf.eval()# WHAT IS THIS FOR
+        inp_test = torch.Tensor(theta_test) #does the input size have to coincide with nedges defined in the class?
 
         #Create empty array for predictions
-        preds=np.empty(shape=(400,7,2))
+        preds=np.empty(shape=(400,len(inp_test),2)) # 7---> len(inp_test)
         #Make prediction with the inputs for each jacknife
         for jk in range(400):
             jkf = torch.LongTensor(jk*np.ones(shape=inp_test.shape))
@@ -199,4 +198,3 @@ class clustering:
         pred_ratio = preds[:,:,0]/(1-preds[:,:,0])-1
 
         return pred_ratio
-    

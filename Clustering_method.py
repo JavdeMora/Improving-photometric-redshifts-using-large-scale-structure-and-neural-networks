@@ -16,7 +16,7 @@ from clustering_architecture import network_dists
 
 class clustering:
     def __init__(self, 
-                 min_sep,= 0.03
+                 min_sep= 0.03,
                  max_sep= 26,
                  nedges= 8,
                  cluster_hlayers, 
@@ -129,7 +129,7 @@ class clustering:
         """
         Train the clustering prediction model.
          Args:
-            Nobj (float): Preguntar a Laura.
+            Nobj (float): Size of the training subset from the distances array. Default is 'all'. 
             *args: Additional arguments.
 
         Returns:

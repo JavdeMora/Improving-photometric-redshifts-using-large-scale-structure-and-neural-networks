@@ -15,6 +15,28 @@ sys.path.append('clustering_architecture.py')
 from clustering_architecture import network_dists
 
 class clustering:
+    class clustering:
+    """
+    A class for training and predicting clustering in astronomical data using neural networks.
+
+    Args:
+        cluster_hlayers (int): Number of hidden layers in the neural network for clustering.
+        epochs (int): Number of training epochs.
+        min_sep (float): Minimum separation for clustering. Default is 0.03.
+        max_sep (float): Maximum separation for clustering. Default is 26.
+        nedges (int): Number of edges. Default is 8.
+        lr (float): Learning rate for optimization. Default is 1e-5.
+        batch_size (int): Batch size for training. Default is 500.
+        pathfile_distances (str): Path to the file containing real distances data. Default is '/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy'.
+        pathfile_drand (str): Path to the file containing random distances data. Default is '/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'.
+
+    Methods:
+        __init__: Initializes the clustering model with provided parameters.
+        _load_distances_array: Loads real and random distances data from files.
+        _get_distances_array: Processes loaded distance data for training.
+        train_clustering: Trains the clustering model.
+        pred_clustering: Predicts the two-point correlation function (2PCF).
+    """
     def __init__(self, 
                  cluster_hlayers, 
                  epochs, 

@@ -56,7 +56,7 @@ class photoz:
         
         
         self.cat_photometry=self._get_photometry_dataset(pathfile)
-        self.cat_colors =self._get_colors()
+        self.cat_colors =self._get_colors(self.cat_photometry)
         
     def _get_photometry_dataset(self, pathfile, bands=['i', 'g', 'r', 'z', 'h', 'j', 'y']):
         """
@@ -92,7 +92,8 @@ class photoz:
                         
             # Add error columns to corresponding magnitude columns
             for b in bands:
-                df[b]=df[b]+df['err_'+b]    
+                if 'err_' + str(b) in df.columns:
+                    df[b]=df[b]+df['err_'+b]    
             
             # Drop error columns and other unnecessary columns
             columns_to_drop = [col for col in df.columns if col.startswith('err_')] + ['dec_gal', 'ra_gal']
@@ -112,11 +113,11 @@ class photoz:
 
         return df
     
-    def _get_colors(self):
+    def _get_colors(self, df):
 
         try:
             # Check if all required columns are present
-            if all(col in self.cat_photometry.columns for col in ['vis', 'observed_redshift_gal']):
+            if all(col in df.columns for col in ['vis', 'observed_redshift_gal']):
                 colors_df = pd.DataFrame({
                     'observed_redshift_gal': self.cat_photometry['observed_redshift_gal'],
                     'Mag_i': self.cat_photometry['vis'],
@@ -249,7 +250,7 @@ class photoz:
                     
                     
                     
-    def pred_photoz(self, test_colors,plot=True): #problemas con input de dim=1
+    def pred_photoz(self, inputs_pathfile, bands=['i', 'g', 'r', 'z', 'h', 'j', 'y'], plot=True): #problemas con input de dim=1
         """
         Predict redshift using flux inputs.
 
@@ -259,8 +260,10 @@ class photoz:
         Returns:
             None
         """
+        inputs= self._get_photometry_dataset(inputs_pathfile, bands) #está bien el self.?
+        inputs = self._get_colors(inputs)
         # Predict redshift
-        logalpha, mu, logsig = self.net_photoz(torch.Tensor(np.array(test_colors)[None, :]).to(self.device))
+        logalpha, mu, logsig = self.net_photoz(torch.Tensor(np.array(inputs)[None, :]).to(self.device))
 
         # Convert predictions to numpy arrays
         alpha = np.exp(logalpha.detach().cpu().numpy())

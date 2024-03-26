@@ -15,7 +15,6 @@ sys.path.append('clustering_architecture.py')
 from clustering_architecture import network_dists
 
 class clustering:
-    class clustering:
     """
     A class for training and predicting clustering in astronomical data using neural networks.
 

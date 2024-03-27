@@ -21,6 +21,7 @@
 
 # %%
 #Import photoz class from Photoz_method script
+import sys
 sys.path.append('../mtl_lss')
 from Photoz_method import photoz
 

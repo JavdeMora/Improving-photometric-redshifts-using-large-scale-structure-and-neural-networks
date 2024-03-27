@@ -15,6 +15,7 @@
 
 # %%
 #Import clustering class from clustering_method script
+import sys
 sys.path.append('Clustering_method.py')
 from clustering_method import clustering
 

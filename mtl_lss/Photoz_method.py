@@ -80,7 +80,7 @@ class photoz:
             
         # Check if all required columns are present in the DataFrame
         script_dir = os.path.dirname(__file__)  # Get directory of the current script
-        json_file_path = os.path.join(script_dir, '../Test git/column_mapping.json')
+        json_file_path = os.path.join(script_dir, '../data/column_mapping.json')
         
         required_columns = set(bands)
         if ~required_columns.issubset(df.columns):

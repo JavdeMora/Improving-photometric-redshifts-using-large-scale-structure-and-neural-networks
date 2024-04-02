@@ -276,7 +276,8 @@ class photoz:
                     
                     
 
-    def pred_photoz(self,inputs_pathfile, all_rows=True, bands=['i', 'g', 'r', 'z', 'h', 'j', 'y'],plot=True):
+    
+    def pred_photoz(self, inputs_pathfile, all_rows=True, bands=['i', 'g', 'r', 'z', 'h', 'j', 'y'],plot=True):
         """
         Predict redshift using flux inputs from a file.
 
@@ -350,7 +351,7 @@ class photoz:
                 plt.xticks(fontsize=18)
                 plt.yticks(fontsize=18)
                 plt.ylabel(f'$p(z)$', fontsize=18)
-                mean_pdf_line = plt.axvline(mean_pdf, color='g', linestyle='-', label='mean')
+                mean_pdf_line = plt.axvline(df['z_mean'].values[j], color='g', linestyle='-', label='mean')
                 plt.legend()
                 plt.show()
 

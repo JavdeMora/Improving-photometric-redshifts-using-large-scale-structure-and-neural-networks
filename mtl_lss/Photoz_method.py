@@ -10,9 +10,12 @@ from torch.utils.data import TensorDataset, DataLoader, Dataset
 import sys
 import scipy.stats as stats
 import json
+
 sys.path.append('column_mapping.json')
 sys.path.append('Photo_z_architecture.py')
+sys.path.append('plots_script.py')
 from Photo_z_architecture import photoz_network
+from plots_script import plot_redshift_distribution
 
 
 
@@ -320,39 +323,8 @@ class photoz:
         
          # Create DataFrame for predicted redshifts
         df = pd.DataFrame(np.c_[zmean], columns=['z_mean'])
-
-        # Calculate and append error
-        x = np.linspace(0, 1, 1000)
-        galaxy_pdf = np.zeros(shape=x.shape)
-        alpha= alpha / alpha.sum()
-        mean_pdf=0
         
-        for j in range(len(inputs)):
-            pick_galaxy=j
-            x = np.linspace(0, 1, 1000) #ya que filtramos catalogo a z<1
-            galaxy_pdf = np.zeros(shape=x.shape)
-            mean_pdf=0
-            for i in range(len(mu[0])):
-                muGauss = mu[pick_galaxy][i]
-                sigmaGauss = sigma[pick_galaxy][i]
-                Gauss = stats.norm.pdf(x, muGauss, sigmaGauss)
-                coeff = alpha[pick_galaxy][i]
-                Gauss = coeff * Gauss
-                galaxy_pdf += Gauss
-                mean_pdf= mean_pdf + muGauss*coeff
-
-            galaxy_pdf_norm = galaxy_pdf / galaxy_pdf.sum()
+        if plot:
+            plot_redshift_distribution(df, alpha, mu, sigma)
             
-            # Plot predicted redshift distribution
-            if plot:
-                fig3 = plt.figure(figsize=(10, 6))
-                plt.plot(x, galaxy_pdf_norm, color='black', label='galaxy_pdf_norm')
-                plt.xlabel(f'$z$', fontsize=18)
-                plt.xticks(fontsize=18)
-                plt.yticks(fontsize=18)
-                plt.ylabel(f'$p(z)$', fontsize=18)
-                mean_pdf_line = plt.axvline(df['z_mean'].values[j], color='g', linestyle='-', label='mean')
-                plt.legend()
-                plt.show()
-
         return df

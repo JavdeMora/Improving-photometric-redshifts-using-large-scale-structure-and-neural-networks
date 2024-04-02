@@ -10,9 +10,10 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 import sys
 import scipy.stats as stats
-
+sys.path.append('plots_script.py')
 sys.path.append('clustering_architecture.py')
 from clustering_architecture import network_dists
+from plots_script import plot_2PCF
 
 class clustering:
     """
@@ -193,7 +194,7 @@ class clustering:
             #Print training loss
             print(wloss.item())
             
-    def pred_clustering(self, theta_test): #WHAT ABOUT THE PLOT
+    def pred_clustering(self, theta_test, plot=True): #WHAT ABOUT THE PLOT
         """
         Predict 2PCF using theta_test inputs.
 
@@ -217,5 +218,8 @@ class clustering:
             preds[jk]=p
         #Computing 2PCF    
         pred_ratio = preds[:,:,0]/(1-preds[:,:,0])-1
+
+        if plot = True:
+            plot_2PCF(pred_ratio, self.d, self.drand, self.min_sep, self.max_sep, self.nedges)
 
         return pred_ratio

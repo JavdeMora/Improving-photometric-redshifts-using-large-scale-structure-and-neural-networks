@@ -17,20 +17,27 @@ from Photo_z_architecture import photoz_network
 
 
 class photoz:
-    
-    #Add there the description of the arguments, not in the notebook. Copy over the descriptions in the notebook.
     """
-    Model = photoz(
-    photoz_hlayers = 5, #Number of hidden layers of the network
-    photoz_num_gauss = 5, #Number of output Gaussians
-    epochs =2, #Number of epochs for the training
-    
-    #Set by default arguments (if left blank)
-    lr=1e-3, #Learning rate for network training
-    batch_size=100, #Batch size for network training
-    pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'  #Path to file with fluxes catalog
-)
+    A class for training and predicting photometric redshifts using neural networks.
+
+    Args:
+        photoz_hlayers (int): Number of hidden layers in the photo-z prediction network.
+        photoz_num_gauss (int): Number of output Gaussians in the photo-z prediction network.
+        epochs (int): Number of epochs for training.
+        lr (float): Learning rate for network training. Default is 1e-3.
+        batch_size (int): Batch size for network training. Default is 100.
+        pathfile (str): Path to the file containing photometric flux data. Default is '/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'.
+
+    Methods:
+        __init__: Initializes the photo-z prediction model with provided parameters.
+        _get_photometry_dataset: Reads photometry dataset from file.
+        _get_colors: Calculates colors from photometry dataset.
+        _get_loaders_photoz: Splits the data into train, validation, and test datasets and creates data loaders.
+        train_photoz: Trains the photo-z prediction model.
+        pred_photoz: Predicts redshift using flux inputs.
+        pred_photoz_arr: Predicts redshift using flux inputs for multiple objects.
     """
+
     def __init__(self, 
                  photoz_hlayers, 
                  photoz_num_gauss,

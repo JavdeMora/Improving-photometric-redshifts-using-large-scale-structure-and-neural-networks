@@ -13,24 +13,38 @@
 #     name: insight
 # ---
 
+# %% [markdown]
+# # TUTORIAL TO RUN A NETWORK PREDICTING THE 2p CORRELATION FUCNTION
+
+# %% [markdown]
+# This netowrk predicts the two point ocrrelation function of glaaxies from two files of angular distances. One of the files contains distances computed from galaxy positions from a simulated catalog, and the other file contains distances computed from a random catalog.
+
 # %%
 #Import clustering class from clustering_method script
-sys.path.append('Clustering_method.py')
-from clustering_method import clustering
+import sys
+sys.path.append('../mtl_lss/')
+from Clustering_method import clustering
+
+# %% [markdown]
+# ## Initialize the method.
+
+# %% [markdown]
+# We first define the minimum and maximum angular separation considered. These values are in arcmin.
+
+# %%
+max_sep= 26
+min_sep= 0.03
+nedges= 8
 
 # %%
 #Initialize the class providing required and optional arguments
 Model = clustering(
-    
-    #Required arguments (to pick by user)
     cluster_hlayers = 5, 
     epochs =2, 
-    
-    #Set by default arguments (if left blank)
-    min_sep= 0.03, 
-    max_sep= 26, 
-    nedges= 8, 
-    lr=1e-5 , 
+    min_sep= min_sep, 
+    max_sep= max_sep, 
+    nedges= nedges, 
+    lr=1e-5, 
     batch_size = 500, 
     pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', 
     pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy' 
@@ -39,7 +53,7 @@ Model = clustering(
 # %%
 #Train the model with the data provided
 Model.train_clustering(
-    Nobj=100    
+    Nobj=100_000    
 )
 
 # %%

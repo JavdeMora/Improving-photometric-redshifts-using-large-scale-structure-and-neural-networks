@@ -219,7 +219,7 @@ class clustering:
         #Computing 2PCF    
         pred_ratio = preds[:,:,0]/(1-preds[:,:,0])-1
 
-        if plot = True:
+        if plot == True:
             plot_2PCF(pred_ratio, self.d, self.drand, self.min_sep, self.max_sep, self.nedges)
 
         return pred_ratio

@@ -173,7 +173,7 @@ class clustering:
         for epoch in range(self.epochs):#deberia separar entre epochs photoz y epochs clustering
             print('starting epoch', epoch)
             #Creating loader
-            distances_array_sub = distances_array[np.random.randint(0, distances_array.shape[0], distances_array.shape[0])]#revisar la size (yo he usado todas las distancias para entrenar, preguntar a laura)
+            distances_array_sub = distances_array[np.random.randint(0, distances_array.shape[0], Nobj)]#revisar la size (yo he usado todas las distancias para entrenar, preguntar a laura)
             data_training = TensorDataset(distances_array_sub)
             loader = DataLoader(data_training, batch_size=self.batch_size, shuffle=True)
 

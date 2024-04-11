@@ -39,12 +39,16 @@ def plot_2PCF(pred_ratio, d, drand, min_sep, max_sep, nedges):
     theta = 10**th * (1./60.)
     thetac = thetac/60
     ratio_dists = np.array([len(distA[(distA>theta[k])&(distA<theta[k+1])]) / len(distB[(distB>theta[k])&(distB<theta[k+1])]) for k in range(len(theta)-1)])
+    
+    pred_ratio_jk = np.zeros(shape=(400,7))
+    for k in range(400):
+        pred_ratio_jk[k] = np.delete(pred_ratio,k,0).mean(0)
 
     network_color = 'crimson'
     true_color = 'navy'
     fig=plt.figure(figsize=(10, 6))
     # Plot predicted 2PCF 
-    plt.errorbar(thetac_test, pred_ratio_jk.mean(0), pred_ratio_jk.std(0), color=network_color, ls='--', label='$p(DD)/p(RR)$ - Network', marker='.', markersize=8)
+    plt.errorbar(thetac, pred_ratio_jk.mean(0), pred_ratio_jk.std(0), color=network_color, ls='--', label='$p(DD)/p(RR)$ - Network', marker='.', markersize=8)
 
     # Plot 2PCF conventional method
     plt.plot(thetac, ratio_dists - 1, color=true_color, label='$p(DD)/p(RR)$ - True', linewidth=2, marker='o', markersize=8)
@@ -57,4 +61,3 @@ def plot_2PCF(pred_ratio, d, drand, min_sep, max_sep, nedges):
     plt.legend()
     plt.tick_params(axis='both', which='both', labelsize=12)
     plt.show()
-

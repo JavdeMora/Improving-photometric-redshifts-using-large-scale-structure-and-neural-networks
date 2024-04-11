@@ -15,6 +15,11 @@ sys.path.append('clustering_architecture.py')
 from clustering_architecture import network_dists
 from plots_script import plot_2PCF
 
+# Set the random seed for NumPy PyTorch and CUDA
+np.random.seed(32)
+torch.manual_seed(32)
+torch.cuda.manual_seed(32)
+
 class clustering:
     """
     A class for training and predicting clustering in astronomical data using neural networks.

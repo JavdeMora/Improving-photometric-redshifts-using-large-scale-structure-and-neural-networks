@@ -17,7 +17,10 @@ sys.path.append('plots_script.py')
 from Photo_z_architecture import photoz_network
 from plots_script import plot_redshift_distribution
 
-
+# Set the random seed for NumPy PyTorch and CUDA
+np.random.seed(32)
+torch.manual_seed(32)
+torch.cuda.manual_seed(32)
 
 class photoz:
     """

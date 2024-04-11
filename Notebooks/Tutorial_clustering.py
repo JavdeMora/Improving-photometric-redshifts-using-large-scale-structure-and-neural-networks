@@ -8,16 +8,17 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: insight
+#     display_name: env_ai
 #     language: python
-#     name: insight
+#     name: env_ai
 # ---
 
 # %%
 #Import clustering class from clustering_method script
 import sys
-sys.path.append('Clustering_method.py')
-from clustering_method import clustering
+sys.path.append('architecture.py')
+sys.path.append('script.py')
+from script import clustering
 
 # %%
 #Initialize the class providing required and optional arguments
@@ -40,7 +41,7 @@ Model = clustering(
 # %%
 #Train the model with the data provided
 Model.train_clustering(
-    Nobj=100    
+    Nobj='all' 
 )
 
 # %%
@@ -48,8 +49,8 @@ Model.train_clustering(
 Model.pred_clustering(
     #Input the array of theta values to see the output of the predicted 2PCF
     theta_test=[0.00081062, 0.00213064, 0.00560019, 0.0147196 , 0.03868915,
-       0.10169096, 0.26728557]
+       0.10169096, 0.26728557],
+    plot=True
 )
 
 # %%
-#Plot, waiting for fixed plot and training time decrease

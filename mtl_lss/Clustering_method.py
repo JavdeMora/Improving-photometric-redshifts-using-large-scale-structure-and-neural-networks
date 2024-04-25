@@ -32,8 +32,8 @@ class clustering:
         nedges (int): Number of edges. Default is 8.
         lr (float): Learning rate for optimization. Default is 1e-5.
         batch_size (int): Batch size for training. Default is 500.
-        pathfile_distances (str): Path to the file containing real distances data. Default is '/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy'.
-        pathfile_drand (str): Path to the file containing random distances data. Default is '/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'.
+        pathfile_distances (str): Path to the file containing real distances data. 
+        pathfile_drand (str): Path to the file containing random distances data. 
 
     Methods:
         __init__: Initializes the clustering model with provided parameters.
@@ -43,15 +43,15 @@ class clustering:
         pred_clustering: Predicts the two-point correlation function (2PCF).
     """
     def __init__(self, 
+                 pathfile_distances, 
+                 pathfile_drand,
                  cluster_hlayers, 
                  epochs, 
                  min_sep= 0.03,
                  max_sep= 26,
                  nedges= 8,
                  lr=1e-5 ,
-                 batch_size = 500, 
-                 pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', 
-                 pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'
+                 batch_size = 500
                 ):
                     
         

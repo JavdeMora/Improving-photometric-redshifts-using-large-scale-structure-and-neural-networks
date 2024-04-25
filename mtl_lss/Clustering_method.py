@@ -25,6 +25,8 @@ class clustering:
     A class for training and predicting clustering in astronomical data using neural networks.
 
     Args:
+        pathfile_distances (str): Path to the file containing real distances data. 
+        pathfile_drand (str): Path to the file containing random distances data. 
         cluster_hlayers (int): Number of hidden layers in the neural network for clustering.
         epochs (int): Number of training epochs.
         min_sep (float): Minimum separation for clustering. Default is 0.03.
@@ -32,8 +34,6 @@ class clustering:
         nedges (int): Number of edges. Default is 8.
         lr (float): Learning rate for optimization. Default is 1e-5.
         batch_size (int): Batch size for training. Default is 500.
-        pathfile_distances (str): Path to the file containing real distances data. 
-        pathfile_drand (str): Path to the file containing random distances data. 
 
     Methods:
         __init__: Initializes the clustering model with provided parameters.

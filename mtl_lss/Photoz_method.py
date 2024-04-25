@@ -27,12 +27,12 @@ class photoz:
     A class for training and predicting photometric redshifts using neural networks.
 
     Args:
+        pathfile (str): Path to the file containing photometric flux data. 
         photoz_hlayers (int): Number of hidden layers in the photo-z prediction network.
         photoz_num_gauss (int): Number of output Gaussians in the photo-z prediction network.
         epochs (int): Number of epochs for training.
         lr (float): Learning rate for network training. Default is 1e-3.
         batch_size (int): Batch size for network training. Default is 100.
-        pathfile (str): Path to the file containing photometric flux data. Default is '/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'.
 
     Methods:
         __init__: Initializes the photo-z prediction model with provided parameters.
@@ -45,12 +45,12 @@ class photoz:
     """
 
     def __init__(self, 
+                 pathfile,
                  photoz_hlayers, 
                  photoz_num_gauss,
                  epochs,
                  lr=1e-3,
-                 batch_size=100, 
-                 pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'
+                 batch_size=100
                 ):
         
         

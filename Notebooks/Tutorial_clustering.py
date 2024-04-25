@@ -25,6 +25,8 @@ from script import clustering
 Model = clustering(
     
     #Required arguments (to pick by user)
+    pathfile_distances,
+    pathfile_drand,
     cluster_hlayers = 5, 
     epochs =2, 
     
@@ -33,9 +35,7 @@ Model = clustering(
     max_sep= 26, 
     nedges= 8, 
     lr=1e-5 , 
-    batch_size = 500, 
-    pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', 
-    pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy' 
+    batch_size = 500
 )
 
 # %%

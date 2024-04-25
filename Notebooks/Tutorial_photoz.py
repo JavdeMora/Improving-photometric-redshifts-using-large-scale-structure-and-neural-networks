@@ -31,12 +31,12 @@ from Photoz_method import photoz
 # %%
 #Initialize the class
 Model = photoz(
+    pathfile,  
     photoz_hlayers = 5,
     photoz_num_gauss = 5, 
     epochs =2, 
     lr=1e-3, 
-    batch_size=100, 
-    pathfile= '/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'  
+    batch_size=100
 )
 
 
@@ -50,7 +50,7 @@ Model.train_photoz(
 # %%
 #Make redshift prediction with color input
 Model.pred_photoz(
-    inputs_pathfile = '.../inputs.csv'  ,
+    inputs_pathfile,
     all_rows=True,
     bands=['i', 'g', 'r', 'z', 'h', 'j', 'y'],
     plot=True

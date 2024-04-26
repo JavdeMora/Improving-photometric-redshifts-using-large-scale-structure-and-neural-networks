@@ -45,18 +45,27 @@ class clustering:
                  lr=1e-5 ,
                  batch_size = 500, 
                  pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', 
-                 pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'
+                 pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy', 
+                 verbose=True,
+                 model_clustering=None,
                 ):
                     
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.net_2pcf= network_dists(cluster_hlayers).to(self.device)
+        net_2pcf= network_dists(cluster_hlayers).to(self.device)
+        if model_clustering is not None:
+            net_2pcf.load_state_dict(torch.load(model_clustering))
+            net_2pcf.eval()
+        
+        self.net_2pcf = net_2pcf
         self.min_sep= min_sep
         self.max_sep= max_sep
         self.nedges= nedges
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
+        self.verbose=verbose
+        
         
         #Instead of giving arguments to the function, you should define self.pathfile_distances and self.pathfile_drand
         #and call them inside the function. --> but then the user couldn't use their own pathfile!
@@ -155,6 +164,7 @@ class clustering:
         Returns:
             None
         """
+        print('Starting training...')
         self.net_2pcf.train()
         #Call distances array
         distances_array=self._get_distances_array()
@@ -170,7 +180,6 @@ class clustering:
             Nobj = float(Nobj)
         # Training loop
         for epoch in range(self.epochs):#deberia separar entre epochs photoz y epochs clustering
-            print('starting epoch', epoch)
             #Creating loader
             distances_array_sub = distances_array[np.random.randint(0, distances_array.shape[0], distances_array.shape[0])]#revisar la size (yo he usado todas las distancias para entrenar, preguntar a laura)
             data_training = TensorDataset(distances_array_sub)
@@ -191,7 +200,9 @@ class clustering:
             # Update learning rate
             scheduler.step()
             #Print training loss
-            print(wloss.item())
+            if self.verbose:
+                print('starting epoch', epoch)
+                print(wloss.item())
             
     def pred_clustering(self, theta_test): #WHAT ABOUT THE PLOT
         """

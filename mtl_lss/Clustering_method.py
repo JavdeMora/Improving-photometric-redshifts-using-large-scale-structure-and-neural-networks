@@ -10,54 +10,94 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 import sys
 import scipy.stats as stats
-
+sys.path.append('plots_script.py')
 sys.path.append('clustering_architecture.py')
 from clustering_architecture import network_dists
+from plots_script import plot_2PCF
+
+# Set the random seed for NumPy PyTorch and CUDA
+np.random.seed(32)
+torch.manual_seed(32)
+torch.cuda.manual_seed(32)
 
 class clustering:
+    """
+    A class for training and predicting clustering in astronomical data using neural networks.
+
+    Args:
+        pathfile_distances (str): Path to the file containing real distances data. 
+        pathfile_drand (str): Path to the file containing random distances data. 
+        cluster_hlayers (int): Number of hidden layers in the neural network for clustering.
+        epochs (int): Number of training epochs.
+        min_sep (float): Minimum separation for clustering. Default is 0.03.
+        max_sep (float): Maximum separation for clustering. Default is 26.
+        nedges (int): Number of edges. Default is 8.
+        lr (float): Learning rate for optimization. Default is 1e-5.
+        batch_size (int): Batch size for training. Default is 500.
+
+    Methods:
+        __init__: Initializes the clustering model with provided parameters.
+        _load_distances_array: Loads real and random distances data from files.
+        _get_distances_array: Processes loaded distance data for training.
+        train_clustering: Trains the clustering model.
+        pred_clustering: Predicts the two-point correlation function (2PCF).
+    """
     def __init__(self, 
-                 min_sep,= 0.03
-                 max_sep= 26,
-                 nedges= 8,
+                 pathfile_distances, 
+                 pathfile_drand,
                  cluster_hlayers, 
                  epochs, 
+                 min_sep= 0.03,
+                 max_sep= 26,
+                 nedges= 8,
                  lr=1e-5 ,
-                 batch_size = 500, 
-                 pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', 
-                 pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'
+                 batch_size = 500,
+                 verbose=True,
+                 model_clustering=None
                 ):
                     
-        self.net_2pcf= network_dists(cluster_hlayers).cuda()
+        
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        net_2pcf= network_dists(cluster_hlayers).to(self.device)
+        if model_clustering is not None:
+            net_2pcf.load_state_dict(torch.load(model_clustering))
+            net_2pcf.eval()
+        
+        self.net_2pcf = net_2pcf
         self.min_sep= min_sep
         self.max_sep= max_sep
         self.nedges= nedges
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
-        self.d, self.drand = self._load_distances_array()
+        self.verbose=verbose
         
         
-    def _load_distances_array(self,  pathfile_distances, pathfile_drand):
-       """
+        #Instead of giving arguments to the function, you should define self.pathfile_distances and self.pathfile_drand
+        #and call them inside the function. --> but then the user couldn't use their own pathfile!
+        self.d, self.drand = self._load_distances_array(pathfile_distances,pathfile_drand)
+        
+        
+    def _load_distances_array(self, pathfile_distances, pathfile_drand):
+        """
         Loads real and random distances from files.
 
         Args:
             pathfile_distances (str): Path to the distances file.
             pathfile_drand (str): Path to the random distances file.
-            
+
         Returns:
             numpy array: real distances for a sky area divided in 400 jacknifes
             numpy array: random distances for a sky area divided in 400 jacknifes
-            
+
         """ 
-        #Load distances arrays
-        d = np.load(pathfile_distances)#[:,:100] <-- if you want to test #(400, 100000)
+        # Load distances arrays
+        d = np.load(pathfile_distances)#[:,:100]<-- if you want to test #(400, 100000)
         drand = np.load(pathfile_drand)#[:,:100] <-- if you want to test
-        
-        #Define angular separation limits and number of edges
+
+        # Define angular separation limits and number of edges
         return d, drand
-        
+
     def _get_distances_array(self):
         """
         Loads distances and random distances arrays from files.
@@ -124,19 +164,20 @@ class clustering:
         """
         Train the clustering prediction model.
          Args:
-            Nobj (float): Preguntar a Laura.
+            Nobj (float): Size of the training subset from the distances array. Default is 'all'. 
             *args: Additional arguments.
 
         Returns:
             None
         """
+        print('Starting training...')
+        self.net_2pcf.train()
         #Call distances array
         distances_array=self._get_distances_array()
         # Transfer model to GPU
-        self.clustnet= self.net_2pcf.cuda()
         
         # Define optimizer, learning rate scheduler and loss function
-        optimizer = optim.Adam(clustnet.parameters(), lr=self.lr)# deberia separar entre lr photoz y lr clustering
+        optimizer = optim.Adam(self.net_2pcf.parameters(), lr=self.lr)# deberia separar entre lr photoz y lr clustering
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1200, gamma=0.01)
         CELoss = nn.CrossEntropyLoss(reduction='none')
         if Nobj=='all':
@@ -145,9 +186,8 @@ class clustering:
             Nobj = float(Nobj)
         # Training loop
         for epoch in range(self.epochs):#deberia separar entre epochs photoz y epochs clustering
-            print('starting epoch', epoch)
             #Creating loader
-            distances_array_sub = distances_array[np.random.randint(0, distances_array.shape[0], distances_array.shape[0])]#revisar la size (yo he usado todas las distancias para entrenar, preguntar a laura)
+            distances_array_sub = distances_array[np.random.randint(0, distances_array.shape[0], Nobj)]#revisar la size (yo he usado todas las distancias para entrenar, preguntar a laura)
             data_training = TensorDataset(distances_array_sub)
             loader = DataLoader(data_training, batch_size=self.batch_size, shuffle=True)
 
@@ -156,21 +196,23 @@ class clustering:
                 x = x[0]
                 d, dclass, jk, w = x[:,0], x[:,1], x[:,2], x[:,3]
                 optimizer.zero_grad()
-                c = self.clustnet(d.unsqueeze(1).cuda(), jk.type(torch.LongTensor).cuda())#
+                c = self.net_2pcf(d.unsqueeze(1).to(self.device), jk.type(torch.LongTensor).to(self.device))#
                 #Computing loss
-                loss = CELoss(c.squeeze(1),dclass.type(torch.LongTensor).cuda())
-                wloss = (w.cuda()*loss).mean()
+                loss = CELoss(c.squeeze(1),dclass.type(torch.LongTensor).to(self.device))
+                wloss = (w.to(self.device)*loss).mean()
                 # Backpropagation and optimization
                 wloss.backward()
                 optimizer.step()
             # Update learning rate
             scheduler.step()
             #Print training loss
-            print(wloss.item())
+            if self.verbose:
+                print('starting epoch', epoch)
+                print(wloss.item())
             
-    def pred_clustering(self, min_sep_input = self.min_sep, min_sep_input = self.max_sep, nedges_input = self.nedges, plot=True):
+    def pred_clustering(self, theta_test, plot=True): #WHAT ABOUT THE PLOT
         """
-        Predict redshift using minimum and maximum separation inputs and the number of edges.
+        Predict 2PCF using theta_test inputs.
 
         Args:
             plot (bool): Whether to plot the predicted redshift distribution. Default is True.
@@ -178,54 +220,22 @@ class clustering:
         Returns:
             None
         """
-        clustnet=self.net_2pcf
-        #Compute the input in angular units
-        th_test = np.linspace(np.log10(min_sep_input), np.log10(max_sep_input), nedges_input)
-        thetac_test = 10**np.array([(th_test[i]+th_test[i+1])/2 for i in range(len(th_test)-1)])
-        thetac_test = thetac_test/60
-        inp_test = torch.Tensor(thetac_test)
+        self.net_2pcf.eval()# WHAT IS THIS FOR
+        inp_test = torch.Tensor(theta_test) #does the input size have to coincide with nedges defined in the class?
 
         #Create empty array for predictions
-        preds=np.empty(shape=(400,7,2))
+        preds=np.empty(shape=(400,len(inp_test),2)) # 7---> len(inp_test)
         #Make prediction with the inputs for each jacknife
         for jk in range(400):
             jkf = torch.LongTensor(jk*np.ones(shape=inp_test.shape))
-            c = clustnet(inp_test.unsqueeze(1).cuda(),jkf.cuda())
+            c = self.net_2pcf(inp_test.unsqueeze(1).to(self.device),jkf.to(self.device))
             s = nn.Softmax(1)
             p = s(c).detach().cpu().numpy()
             preds[jk]=p
         #Computing 2PCF    
         pred_ratio = preds[:,:,0]/(1-preds[:,:,0])-1
 
-        #Plot 2PCF 
-        if plot:
-            #Calling real data
-            distA = self.d.flatten()
-            distB = self.drand.flatten()
-            #Compute 2PCF using the real data
-            th = np.linspace(np.log10(self.min_sep), np.log10(self.max_sep), self.nedges)
-            thetac = 10**np.array([(th[i]+th[i+1])/2 for i in range(len(th)-1)])
-            theta = 10**th * (1./60.)
-            thetac = thetac/60
-            ratio_dists = np.array([len(distA[(distA>theta[k])&(distA<theta[k+1])]) / len(distB[(distB>theta[k])&(distB<theta[k+1])]) for k in range(len(theta)-1)])
-            
-            network_color = 'crimson'
-            true_color = 'navy'
-            fig=plt.figure(figsize=(10, 6))
-            #Plot predicted 2PCF 
-            plt.errorbar(thetac_test, pred_ratio_jk.mean(0), pred_ratio_jk.std(0), color=network_color, ls='--', label='$p(DD)/p(RR)$ - Network', marker='.', markersize=8)
-            
-            # Plot 2PCF conventional method
-            plt.plot(thetac, ratio_dists - 1, color=true_color, label='$p(DD)/p(RR)$ - True', linewidth=2, marker='o', markersize=8)
-            
-            plt.xscale('log')
-            plt.ylabel(r'$w(\theta)$', fontsize=16)
-            plt.xlabel(r'$\theta$', fontsize=16)
-            plt.title('Comparison of Network Predictions and True Values', fontsize=18)
-            plt.grid(which='both', linestyle='--', alpha=0.7)
-            plt.legend()
-            plt.tick_params(axis='both', which='both', labelsize=12)
-            plt.show()
+        if plot == True:
+            plot_2PCF(pred_ratio, self.d, self.drand, self.min_sep, self.max_sep, self.nedges)
 
         return pred_ratio
-    

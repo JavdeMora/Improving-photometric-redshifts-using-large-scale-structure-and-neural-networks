@@ -4,26 +4,53 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt 
 import pandas as pd
-import matplotlib.cm as cm
 import os
 from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 import sys
 import scipy.stats as stats
+import json
 
+sys.path.append('column_mapping.json')
 sys.path.append('Photo_z_architecture.py')
+sys.path.append('plots_script.py')
 from Photo_z_architecture import photoz_network
+from plots_script import plot_redshift_distribution
 
-
+# Set the random seed for NumPy PyTorch and CUDA
+np.random.seed(32)
+torch.manual_seed(32)
+torch.cuda.manual_seed(32)
 
 class photoz:
+    """
+    A class for training and predicting photometric redshifts using neural networks.
+
+    Args:
+        pathfile (str): Path to the file containing photometric flux data. 
+        photoz_hlayers (int): Number of hidden layers in the photo-z prediction network.
+        photoz_num_gauss (int): Number of output Gaussians in the photo-z prediction network.
+        epochs (int): Number of epochs for training.
+        lr (float): Learning rate for network training. Default is 1e-3.
+        batch_size (int): Batch size for network training. Default is 100.
+
+    Methods:
+        __init__: Initializes the photo-z prediction model with provided parameters.
+        _get_photometry_dataset: Reads photometry dataset from file.
+        _get_colors: Calculates colors from photometry dataset.
+        _get_loaders_photoz: Splits the data into train, validation, and test datasets and creates data loaders.
+        train_photoz: Trains the photo-z prediction model.
+        pred_photoz: Predicts redshift using flux inputs.
+        pred_photoz_arr: Predicts redshift using flux inputs for multiple objects.
+    """
+
     def __init__(self, 
+                 pathfile,
                  photoz_hlayers, 
                  photoz_num_gauss,
                  epochs,
                  lr=1e-3,
-                 batch_size=100, 
-                 pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'
+                 batch_size=100
                 ):
         
         
@@ -32,7 +59,6 @@ class photoz:
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
-        
         
         self.cat_photometry=self._get_photometry_dataset(pathfile)
         self.cat_colors =self._get_colors()
@@ -59,7 +85,9 @@ class photoz:
             raise ValueError("Only filetypes '.csv' and '.parquet' are supported")
             
         # Check if all required columns are present in the DataFrame
-        json_file_path='/nfs/pic.es/user/j/jdemora/Test git/column_mapping.json'
+        script_dir = os.path.dirname(__file__)  # Get directory of the current script
+        json_file_path = os.path.join(script_dir, '../data/column_mapping.json')
+        
         required_columns = set(bands)
         if ~required_columns.issubset(df.columns):
             # Rename columns based on the provided mapping
@@ -69,7 +97,8 @@ class photoz:
                         
             # Add error columns to corresponding magnitude columns
             for b in bands:
-                df[b]=df[b]+df['err_'+b]    
+                if 'err_' + str(b) in df.columns:
+                    df[b]=df[b]+df['err_'+b]    
             
             # Drop error columns and other unnecessary columns
             columns_to_drop = [col for col in df.columns if col.startswith('err_')] + ['dec_gal', 'ra_gal']
@@ -113,6 +142,33 @@ class photoz:
                 'r-i': self.cat_photometry['r'] - self.cat_photometry['i'],
                 'i-z': self.cat_photometry['i'] - self.cat_photometry['z'],
                 'z-y': self.cat_photometry['z'] - self.cat_photometry['y']
+            })   
+        return colors_df
+    
+    def _get_colors_pred(self, df):
+
+        try:
+            # Check if all required columns are present
+            if all(col in df.columns for col in ['vis', 'observed_redshift_gal']):
+                colors_df = pd.DataFrame({
+                    'observed_redshift_gal': df['observed_redshift_gal'],
+                    'Mag_i': df['vis'],
+                    'g-r': df['g'] - df['r'],
+                    'r-i': df['r'] - df['i'],
+                    'i-z': df['i'] - df['z'],
+                    'z-y': df['z'] - df['y'],
+                    'y-j': df['y'] - df['j'],
+                    'j-h': df['j'] - df['h']
+                })
+            else:
+                raise ValueError("Missing required columns")
+        except KeyError:
+            # Handle the case where some columns are missing
+            colors_df = pd.DataFrame({
+                'g-r': df['g'] - df['r'],
+                'r-i': df['r'] - df['i'],
+                'i-z': df['i'] - df['z'],
+                'z-y': df['z'] - df['y']
             })   
         return colors_df
         
@@ -225,19 +281,40 @@ class photoz:
                     print('Epoch [{}/{}], Train Loss: {:.4f}, Val Loss: {:.4f}'.format(epoch+1, self.epochs, train_loss, val_loss))
                     
                     
-                    
-    def pred_photoz(self, test_colors,plot=True): #problemas con input de dim=1
+
+    
+    def pred_photoz(self, inputs_pathfile, all_rows=True, bands=['i', 'g', 'r', 'z', 'h', 'j', 'y'],plot=True):
         """
-        Predict redshift using flux inputs.
+        Predict redshift using flux inputs from a file.
 
         Args:
+            inputs_pathfile (str): Path to the input file containing flux data.
+            all_rows (bool): If True, consider all rows in the input data. If False, specify the range of rows to consider.
+                Default is True.
+            bands (list of str): List of bands to consider for flux data. Default is ['i', 'g', 'r', 'z', 'h', 'j', 'y'].
             plot (bool): Whether to plot the predicted redshift distribution. Default is True.
 
         Returns:
-            None
+            pandas.DataFrame: DataFrame containing predicted redshifts.
         """
+       
+        inputs= self._get_photometry_dataset(inputs_pathfile, bands) #está bien el self.?
+        inputs = self._get_colors_pred(inputs)
+        if all_rows ==True:
+            pass
+        else:
+            first_row = input('first row: ')
+            last_row = input('last row: ')
+            if last_row == first_row:
+                inputs = inputs.iloc[int(first_row):int(first_row)+1]
+            else:
+                inputs = inputs.iloc[int(first_row):int(last_row)]
+        # Drop unnecessary columns
+        columns_to_drop =  set(['observed_redshift_gal','Mag_i'])
+        if ~columns_to_drop.issubset(inputs.columns):
+            inputs = inputs.drop(columns=columns_to_drop, axis=1)
         # Predict redshift
-        logalpha, mu, logsig = self.net_photoz(torch.Tensor(np.array(test_colors)[None, :]).to(self.device))
+        logalpha, mu, logsig = self.net_photoz(torch.Tensor(inputs.to_numpy()).to(self.device))
 
         # Convert predictions to numpy arrays
         alpha = np.exp(logalpha.detach().cpu().numpy())
@@ -246,96 +323,11 @@ class photoz:
 
         # Calculate mean redshift
         zmean = (alpha * mu).sum(1)
-
-        # Create DataFrame for predicted redshifts
-        df = pd.DataFrame(np.c_[zmean], columns=['z'])
-
-        # Calculate and append error
-        x = np.linspace(0, 1, 1000)
-        galaxy_pdf = np.zeros(shape=x.shape)
-        alpha= alpha / alpha.sum()
-        mean_pdf=0
-
-        for i in range(len(mu[0])):
-            muGauss = mu[0][i]
-            sigmaGauss = sigma[0][i]
-            Gauss = stats.norm.pdf(x, muGauss, sigmaGauss)
-            coeff = alpha[0][i]
-            Gauss = coeff * Gauss
-            galaxy_pdf += Gauss
-            mean_pdf= mean_pdf + muGauss*coeff
-
-        galaxy_pdf_norm = galaxy_pdf / galaxy_pdf.sum()
-
-        # Plot predicted redshift distribution
-        if plot:
-            fig3 = plt.figure(figsize=(10, 6))
-            plt.plot(x, galaxy_pdf_norm, color='black', label='galaxy_pdf_norm')
-            plt.xlabel(f'$z$', fontsize=18)
-            plt.xticks(fontsize=18)
-            plt.yticks(fontsize=18)
-            plt.ylabel(f'$p(z)$', fontsize=18)
-            mean_pdf_line = plt.axvline(mean_pdf, color='g', linestyle='-', label='mean')
-            plt.legend()
-            plt.show() 
-            
-        return zmean, galaxy_pdf_norm
-
-
-    def pred_photoz_arr(self, test_colors,plot=True):
-        """
-        Predict redshift using flux inputs.
-
-        Args:
-            plot (bool): Whether to plot the predicted redshift distribution. Default is True.
-
-        Returns:
-            None
-        """
-        # Predict redshift
-        logalpha, mu, logsig = self.net_photoz(torch.Tensor(test_colors).to(self.device))
-
-        # Convert predictions to numpy arrays
-        alpha = np.exp(logalpha.detach().cpu().numpy())
-        sigma = np.exp(logsig.detach().cpu().numpy())
-        mu = mu.detach().cpu().numpy()
-
-        # Calculate mean redshift
-        zmean = (alpha * mu).sum(1)
-
-        # Calculate and append error
-        x = np.linspace(0, 1, 1000)
-        galaxy_pdf = np.zeros(shape=x.shape)
-        alpha= alpha / alpha.sum()
-        mean_pdf=0
-        print(len(test_colors))
         
-        for j in range(len(test_colors)):
-            pick_galaxy=j
-            x = np.linspace(0, 1, 1000) #ya que filtramos catalogo a z<1
-            galaxy_pdf = np.zeros(shape=x.shape)
-            mean_pdf=0
-            for i in range(len(mu[0])):
-                muGauss = mu[pick_galaxy][i]
-                sigmaGauss = sigma[pick_galaxy][i]
-                Gauss = stats.norm.pdf(x, muGauss, sigmaGauss)
-                coeff = alpha[pick_galaxy][i]
-                Gauss = coeff * Gauss
-                galaxy_pdf += Gauss
-                mean_pdf= mean_pdf + muGauss*coeff
-
-            galaxy_pdf_norm = galaxy_pdf / galaxy_pdf.sum()
+         # Create DataFrame for predicted redshifts
+        df = pd.DataFrame(np.c_[zmean], columns=['z_mean'])
+        
+        if plot:
+            plot_redshift_distribution(df, alpha, mu, sigma)
             
-            # Plot predicted redshift distribution
-            if plot:
-                fig3 = plt.figure(figsize=(10, 6))
-                plt.plot(x, galaxy_pdf_norm, color='black', label='galaxy_pdf_norm')
-                plt.xlabel(f'$z$', fontsize=18)
-                plt.xticks(fontsize=18)
-                plt.yticks(fontsize=18)
-                plt.ylabel(f'$p(z)$', fontsize=18)
-                mean_pdf_line = plt.axvline(mean_pdf, color='g', linestyle='-', label='mean')
-                plt.legend()
-                plt.show()
-
-        return zmean
+        return df

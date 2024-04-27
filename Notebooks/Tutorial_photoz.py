@@ -47,6 +47,12 @@ Model.train_photoz(
     val_size=0.25 
 )
 
+# %% [markdown]
+# ## SAME HERE; DEFINE THE ARGUMENTS IN THE CLASS FUNCTION
+
+# %% [markdown]
+# ## ANOTHER THING: THE COLORS ARE NOT 'PICKED BY THE USER'. YOU SHOULD LOAD A GALAXY FROM THE FILE AND TEST IT THERE
+
 # %%
 #Make redshift prediction with color input
 Model.pred_photoz(

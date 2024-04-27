@@ -21,6 +21,7 @@
 
 # %%
 #Import photoz class from Photoz_method script
+import sys
 sys.path.append('../mtl_lss')
 from Photoz_method import photoz
 
@@ -30,12 +31,12 @@ from Photoz_method import photoz
 # %%
 #Initialize the class
 Model = photoz(
+    pathfile,  
     photoz_hlayers = 5,
     photoz_num_gauss = 5, 
     epochs =2, 
     lr=1e-3, 
-    batch_size=100, 
-    pathfile='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv'  
+    batch_size=100
 )
 
 
@@ -55,21 +56,8 @@ Model.train_photoz(
 # %%
 #Make redshift prediction with color input
 Model.pred_photoz(
-    #Input the array of colors
-    test_colors=[ 0.5304,  0.4784, -0.0526,  0.2745,  0.6954, -0.1624], 
-    plot=True 
-)
-
-# %%
-#Make redshift prediction for a set of colors
-Model.pred_photoz_arr(
-    #Input the array of colors
-    test_colors = [
-        [ 0.5304,  0.4784, -0.0526,  0.2745,  0.6954, -0.1624],
-        [ 1.0710,  0.4091,  0.3013,  0.3987,  0.3970,  0.2368],
-        [ 0.0593,  0.0383,  0.0917, -0.1004,  0.0179, -0.1460]
-    ] ,
+    inputs_pathfile,
+    all_rows=True,
+    bands=['i', 'g', 'r', 'z', 'h', 'j', 'y'],
     plot=True
 )
-
-# %%

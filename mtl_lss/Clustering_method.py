@@ -10,15 +10,23 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 import sys
 import scipy.stats as stats
-
+sys.path.append('plots_script.py')
 sys.path.append('clustering_architecture.py')
 from clustering_architecture import network_dists
+from plots_script import plot_2PCF
+
+# Set the random seed for NumPy PyTorch and CUDA
+np.random.seed(32)
+torch.manual_seed(32)
+torch.cuda.manual_seed(32)
 
 class clustering:
     """
     A class for training and predicting clustering in astronomical data using neural networks.
 
     Args:
+        pathfile_distances (str): Path to the file containing real distances data. 
+        pathfile_drand (str): Path to the file containing random distances data. 
         cluster_hlayers (int): Number of hidden layers in the neural network for clustering.
         epochs (int): Number of training epochs.
         min_sep (float): Minimum separation for clustering. Default is 0.03.
@@ -26,8 +34,6 @@ class clustering:
         nedges (int): Number of edges. Default is 8.
         lr (float): Learning rate for optimization. Default is 1e-5.
         batch_size (int): Batch size for training. Default is 500.
-        pathfile_distances (str): Path to the file containing real distances data. Default is '/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy'.
-        pathfile_drand (str): Path to the file containing random distances data. Default is '/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy'.
 
     Methods:
         __init__: Initializes the clustering model with provided parameters.
@@ -37,17 +43,17 @@ class clustering:
         pred_clustering: Predicts the two-point correlation function (2PCF).
     """
     def __init__(self, 
+                 pathfile_distances, 
+                 pathfile_drand,
                  cluster_hlayers, 
                  epochs, 
                  min_sep= 0.03,
                  max_sep= 26,
                  nedges= 8,
                  lr=1e-5 ,
-                 batch_size = 500, 
-                 pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', 
-                 pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy', 
+                 batch_size = 500,
                  verbose=True,
-                 model_clustering=None,
+                 model_clustering=None
                 ):
                     
         
@@ -181,7 +187,7 @@ class clustering:
         # Training loop
         for epoch in range(self.epochs):#deberia separar entre epochs photoz y epochs clustering
             #Creating loader
-            distances_array_sub = distances_array[np.random.randint(0, distances_array.shape[0], distances_array.shape[0])]#revisar la size (yo he usado todas las distancias para entrenar, preguntar a laura)
+            distances_array_sub = distances_array[np.random.randint(0, distances_array.shape[0], Nobj)]#revisar la size (yo he usado todas las distancias para entrenar, preguntar a laura)
             data_training = TensorDataset(distances_array_sub)
             loader = DataLoader(data_training, batch_size=self.batch_size, shuffle=True)
 
@@ -204,7 +210,7 @@ class clustering:
                 print('starting epoch', epoch)
                 print(wloss.item())
             
-    def pred_clustering(self, theta_test): #WHAT ABOUT THE PLOT
+    def pred_clustering(self, theta_test, plot=True): #WHAT ABOUT THE PLOT
         """
         Predict 2PCF using theta_test inputs.
 
@@ -228,5 +234,8 @@ class clustering:
             preds[jk]=p
         #Computing 2PCF    
         pred_ratio = preds[:,:,0]/(1-preds[:,:,0])-1
+
+        if plot == True:
+            plot_2PCF(pred_ratio, self.d, self.drand, self.min_sep, self.max_sep, self.nedges)
 
         return pred_ratio

@@ -8,9 +8,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: insight
+#     display_name: env_ai
 #     language: python
-#     name: insight
+#     name: env_ai
 # ---
 
 # %% [markdown]
@@ -35,10 +35,6 @@ def estimate(x):
     std = np.sqrt(l*np.mean(abs(x - mean)**2))
     return mean, std
 
-
-# %% [markdown]
-# ## Initialize the method.
-
 # %% [markdown]
 # We first define the minimum and maximum angular separation considered. These values are in arcmin.
 
@@ -50,6 +46,8 @@ nedges= 8
 # %%
 #Initialize the class providing required and optional arguments
 Model = clustering(
+    pathfile_distances,
+    pathfile_drand,
     cluster_hlayers = 5, 
     epochs =50, 
     min_sep= min_sep, 
@@ -57,15 +55,13 @@ Model = clustering(
     nedges= nedges, 
     lr=1e-4, 
     batch_size = 500, 
-    pathfile_distances='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy', 
-    pathfile_drand='/data/astro/scratch2/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy', 
-    model_clustering='/nfs/pic.es/user/l/lcabayol/EUCLID/Improving-photometric-redshifts-using-large-scale-structure-and-neural-networks/models/2PCF2_600epochs.pt'
+    model_clustering='None'
 )
 
 # %% jupyter={"outputs_hidden": true}
 #Train the model with the data provided
 Model.train_clustering(
-    Nobj=1_000_000    
+    Nobj='all' 
 )
 
 # %%
@@ -75,10 +71,8 @@ thetac = [0.00081062, 0.00213064, 0.00560019, 0.0147196 , 0.03868915,
 # %%
 #Make prediction with new data
 jackknife_preds = Model.pred_clustering(
-    #Input the array of theta values to see the output of the predicted 2PCF
     theta_test=thetac
 )
-
 
 # %% jupyter={"outputs_hidden": true}
 # np.delete?

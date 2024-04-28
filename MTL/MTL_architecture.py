@@ -1,3 +1,7 @@
+import numpy as np 
+import torch
+from torch import nn
+
 class MTL_network(torch.nn.Module):
     def __init__(self, nhidden, num_gauss):
         super().__init__()

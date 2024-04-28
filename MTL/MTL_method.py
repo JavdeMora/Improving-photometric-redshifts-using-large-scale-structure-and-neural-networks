@@ -95,7 +95,7 @@ class Photoz_MTL:
             raise ValueError("Only filetypes '.csv' and '.parquet' are supported")
             
         # Check if all required columns are present in the DataFrame
-        script_dir = os.path.dirname(__file__)  # Get directory of the current script
+        script_dir = os.path.dirname(__file__)  # Get directory of the current script __file__ -> 'MTL_method.py'??
         json_file_path = os.path.join(script_dir, 'column_mapping.json')
         
         required_columns = set(bands)

@@ -26,6 +26,7 @@ def plot_redshift_distribution(df, alpha, mu, sigma):
         plt.ylabel('$p(z)$', fontsize=18)
         mean_pdf_line = plt.axvline(df['z_mean'].values[j], color='g', linestyle='-', label='mean')
         plt.legend()
+        print('Z_mean = {:.4f} for galaxy number {}'.format(df['z_mean'].values[j],pick_galaxy))
         plt.show()
 
 #2PCF curves comparison

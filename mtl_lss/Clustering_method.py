@@ -184,7 +184,7 @@ class clustering:
         if Nobj=='all':
             Nobj = distances_array.shape[0]
         else:
-            Nobj = float(Nobj)
+            Nobj = int(Nobj)
         # Training loop
         for epoch in range(self.epochs):#deberia separar entre epochs photoz y epochs clustering
             #Creating loader

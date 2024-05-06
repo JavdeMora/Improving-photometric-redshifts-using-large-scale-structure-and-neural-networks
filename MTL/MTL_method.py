@@ -11,11 +11,11 @@ import sys
 import scipy.stats as stats
 import json
 
-#sys.path.append('column_mapping.json')
+sys.path.append('column_mapping.json')
 sys.path.append('MTL_architecture.py')
 from MTL_architecture import MTL_network
-#sys.path.append('plots_script.py')
-#from plots_script import plot_redshift_distribution
+sys.path.append('plots_script.py')
+from plots_script import plot_redshift_distribution
 
 # Set the random seed for NumPy PyTorch and CUDA
 np.random.seed(32)

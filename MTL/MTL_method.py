@@ -11,11 +11,11 @@ import sys
 import scipy.stats as stats
 import json
 
-sys.path.append('column_mapping.json')
+#sys.path.append('column_mapping.json')
 sys.path.append('MTL_architecture.py')
 from MTL_architecture import MTL_network
-sys.path.append('plots_script.py')
-from plots_script import plot_redshift_distribution
+#sys.path.append('plots_script.py')
+#from plots_script import plot_redshift_distribution
 
 # Set the random seed for NumPy PyTorch and CUDA
 np.random.seed(32)
@@ -24,24 +24,28 @@ torch.cuda.manual_seed(32)
 
 class Photoz_MTL:
     """
-    A class for training and predicting photometric redshifts using neural networks.
+    A class for training and predicting photometric redshifts using neural networks applying Multi-Task Learning (MTL).
 
     Args:
-        pathfile (str): Path to the file containing photometric flux data. 
+        pathfile_photometry (str): Path to the file containing photometric flux data.
+        pathfile_distances (str): Path to the file containing real distances for a sky area.
+        pathfile_drand (str): Path to the file containing random distances for a sky area.
         photoz_hlayers (int): Number of hidden layers in the photo-z prediction network.
         photoz_num_gauss (int): Number of output Gaussians in the photo-z prediction network.
         epochs (int): Number of epochs for training.
         lr (float): Learning rate for network training. Default is 1e-3.
         batch_size (int): Batch size for network training. Default is 100.
+        min_sep (float): Minimum separation distance. Default is 0.03.
+        max_sep (float): Maximum separation distance. Default is 26.
+        nedges (int): Number of edges. Default is 8.
 
     Methods:
         __init__: Initializes the photo-z prediction model with provided parameters.
         _get_photometry_dataset: Reads photometry dataset from file.
         _get_colors: Calculates colors from photometry dataset.
         _get_loaders_photoz: Splits the data into train, validation, and test datasets and creates data loaders.
-        train_photoz: Trains the photo-z prediction model.
+        training: Trains the photo-z prediction model.
         pred_photoz: Predicts redshift using flux inputs.
-        pred_photoz_arr: Predicts redshift using flux inputs for multiple objects.
     """
 
     def __init__(self, 
@@ -75,10 +79,11 @@ class Photoz_MTL:
         
     def _get_photometry_dataset(self, pathfile, bands=['i', 'g', 'r', 'z', 'h', 'j', 'y']):
         """
-        Read photometry dataset from file.
+        Reads a photometry dataset from a file.
 
         Args:
             pathfile (str): Path to the dataset file.
+            bands (list of str): List of bands for photometry. Default is ['i', 'g', 'r', 'z', 'h', 'j', 'y'].
 
         Returns:
             pandas.DataFrame: Photometry dataset.
@@ -95,7 +100,7 @@ class Photoz_MTL:
             raise ValueError("Only filetypes '.csv' and '.parquet' are supported")
             
         # Check if all required columns are present in the DataFrame
-        script_dir = os.path.dirname(__file__)  # Get directory of the current script __file__ -> 'MTL_method.py'??
+        script_dir = os.path.dirname('MTL_git.ipynb')  # Get directory of the current script  __file__ -> 'MTL_method.py'??
         json_file_path = os.path.join(script_dir, 'column_mapping.json')
         
         required_columns = set(bands)
@@ -111,7 +116,7 @@ class Photoz_MTL:
                     df[b]=df[b]+df['err_'+b]    
             
             # Drop error columns and other unnecessary columns
-            columns_to_drop = [col for col in df.columns if col.startswith('err_')]
+            columns_to_drop = [col for col in df.columns if col.startswith('err_')]# + ['dec_gal', 'ra_gal']
             if 'dec_gal' in df.columns:
                 columns_to_drop.append('dec_gal')
             if 'ra_gal' in df.columns:
@@ -135,7 +140,12 @@ class Photoz_MTL:
 
     
     def _get_colors(self):
+        """
+        Calculates colors from photometry dataset.
 
+        Returns:
+            pandas.DataFrame: DataFrame containing calculated colors.
+        """
         try:
             # Check if all required columns are present
             if all(col in self.cat_photometry.columns for col in ['vis', 'observed_redshift_gal']):
@@ -162,6 +172,16 @@ class Photoz_MTL:
         return colors_df
     
     def _get_colors_pred(self, df):
+        
+        """
+        Calculates colors from a DataFrame.
+
+        Args:
+            df (pandas.DataFrame): DataFrame containing photometric data.
+
+        Returns:
+            pandas.DataFrame: DataFrame containing calculated colors.
+        """
 
         try:
             # Check if all required columns are present
@@ -199,10 +219,9 @@ class Photoz_MTL:
             pathfile_drand (str): Path to the random distances file.
 
         Returns:
-            numpy array: real distances for a sky area divided in 400 jacknifes
-            numpy array: random distances for a sky area divided in 400 jacknifes
-
-        """ 
+            numpy array: Real distances for a sky area divided into 400 jackknifes.
+            numpy array: Random distances for a sky area divided into 400 jackknifes.
+        """
         # Load distances arrays
         d = np.load(pathfile_distances)
         drand = np.load(pathfile_drand)
@@ -210,6 +229,15 @@ class Photoz_MTL:
         return d, drand
       
     def _get_MTL_df(self, colors_df):
+        """
+        Generates a DataFrame for Multi-Task Learning (MTL).
+
+        Args:
+            colors_df (pandas.DataFrame): DataFrame containing colors.
+
+        Returns:
+            pandas.DataFrame: DataFrame for MTL.
+        """
         
         distA = self.d.flatten()
         distB = self.drand.flatten()
@@ -255,12 +283,12 @@ class Photoz_MTL:
     
     def _get_loaders(self, test_size, val_size, batch_size):
         """
-        Split the data into train, validation, and test datasets and create data loaders.
+        Splits the data into train, validation, and test datasets and creates data loaders.
 
         Args:
-            test_size (float): The proportion of the dataset to include in the test split.
-            val_size (float): The proportion of the training dataset to include in the validation split.
-            batch_size (int): The batch size for the data loaders.
+            test_size (float): Proportion of the dataset for the test split.
+            val_size (float): Proportion of the training dataset for the validation split.
+            batch_size (int): Batch size for the data loaders.
 
         Returns:
             DataLoader: Training data loader.
@@ -296,11 +324,11 @@ class Photoz_MTL:
     
     def training(self, test_size=0.2, val_size=0.25, *args):
         """
-        Train the photo-z prediction model.
+        Trains the photo-z prediction model.
 
         Args:
-            test_size (float): The proportion of the dataset to include in the test split.
-            val_size (float): The proportion of the training dataset to include in the validation split.
+            test_size (float): Proportion of the dataset for the test split. Default is 0.2.
+            val_size (float): Proportion of the training dataset for the validation split. Default is 0.25.
             *args: Additional arguments.
 
         Returns:
@@ -375,7 +403,7 @@ class Photoz_MTL:
      
     def pred_photoz(self, inputs_pathfile, all_rows=True, bands=['i', 'g', 'r', 'z', 'h', 'j', 'y'],plot=True):
         """
-        Predict redshift using flux inputs from a file.
+        Predicts redshift using flux inputs from a file.
 
         Args:
             inputs_pathfile (str): Path to the input file containing flux data.

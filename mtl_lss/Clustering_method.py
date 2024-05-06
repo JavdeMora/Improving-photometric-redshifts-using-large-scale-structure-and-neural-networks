@@ -40,7 +40,7 @@ class clustering:
         _load_distances_array: Loads real and random distances data from files.
         _get_distances_array: Processes loaded distance data for training.
         train_clustering: Trains the clustering model.
-        pred_clustering: Predicts the two-point correlation function (2PCF).
+        predict_clustering: Predicts the two-point correlation function (2PCF).
     """
     def __init__(self, 
                  pathfile_distances, 
@@ -79,7 +79,7 @@ class clustering:
         
         
     def _load_distances_array(self, pathfile_distances, pathfile_drand):
-        """
+       """
         Loads real and random distances from files.
 
         Args:
@@ -163,7 +163,8 @@ class clustering:
     def train_clustering(self, Nobj='all', *args):
         """
         Train the clustering prediction model.
-         Args:
+
+        Args:
             Nobj (float): Size of the training subset from the distances array. Default is 'all'. 
             *args: Additional arguments.
 
@@ -211,7 +212,7 @@ class clustering:
                 print(wloss.item())
             
     def pred_clustering(self, theta_test, plot=True): #WHAT ABOUT THE PLOT
-        """
+       """
         Predict 2PCF using theta_test inputs.
 
         Args:

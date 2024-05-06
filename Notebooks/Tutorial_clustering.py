@@ -55,7 +55,7 @@ Model = clustering(
     nedges= nedges, 
     lr=1e-4, 
     batch_size = 500, 
-    model_clustering='None'
+    model_clustering = None
 )
 
 # %% jupyter={"outputs_hidden": true}

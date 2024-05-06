@@ -33,7 +33,8 @@ class Photoz_MTL:
         photoz_hlayers (int): Number of hidden layers in the photo-z prediction network.
         photoz_num_gauss (int): Number of output Gaussians in the photo-z prediction network.
         epochs (int): Number of epochs for training.
-        lr (float): Learning rate for network training. Default is 1e-3.
+        lr (float): Learning rate for photo-z network training. Default is 2e-3.
+        lr_dpred (float): Learning rate for clustering network training. Default is 1e-5.
         batch_size (int): Batch size for network training. Default is 100.
         min_sep (float): Minimum separation distance. Default is 0.03.
         max_sep (float): Maximum separation distance. Default is 26.
@@ -55,7 +56,8 @@ class Photoz_MTL:
                  photoz_hlayers, 
                  photoz_num_gauss,
                  epochs,
-                 lr = 1e-3,
+                 lr = 2e-3,
+                 lr_dpred=1e-5,
                  batch_size = 100,
                  min_sep = 0.03,
                  max_sep = 26,
@@ -68,6 +70,7 @@ class Photoz_MTL:
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
+        self.lr_dpred = lr_dpred
         self.min_sep = min_sep
         self.max_sep = max_sep
         self.nedges = nedges
@@ -345,9 +348,16 @@ class Photoz_MTL:
         # Initialize lists to store training losses and predicted parameters
         self.train_losses = [] 
 
+        # Define learning rates for dloss and phloss separately
+        learning_rates = [{'params': self.net.hiddenlay.parameters(), 'lr': self.lr},
+                          {'params': self.net.dpred.parameters(), 'lr': self.lr_dpred}, 
+                          {'params': self.net.logalphas.parameters(), 'lr': self.lr},
+                          {'params': self.net.means.parameters(), 'lr': self.lr},
+                          {'params': self.net.logstds.parameters(), 'lr': self.lr}] 
         # Define optimizer and learning rate scheduler
-        optimizer = optim.Adam(self.net.parameters(), lr=self.lr) 
+        optimizer =  optim.Adam(self.net.parameters())
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
+        #Define Loss function for dpred
         CELoss = nn.CrossEntropyLoss(reduction='none')
 
         # Training loop

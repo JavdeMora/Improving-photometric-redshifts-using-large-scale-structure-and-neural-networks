@@ -355,7 +355,7 @@ class Photoz_MTL:
                           {'params': self.net.means.parameters(), 'lr': self.lr},
                           {'params': self.net.logstds.parameters(), 'lr': self.lr}] 
         # Define optimizer and learning rate scheduler
-        optimizer =  optim.Adam(self.net.parameters())
+        optimizer =  optim.Adam(learning_rates)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
         #Define Loss function for dpred
         CELoss = nn.CrossEntropyLoss(reduction='none')

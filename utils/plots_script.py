@@ -31,6 +31,17 @@ def plot_redshift_distribution(df, alpha, mu, sigma):
 
 #2PCF curves comparison
 def plot_2PCF(pred_ratio, d, drand, min_sep, max_sep, nedges):
+    def estimate(x):
+        mean_x = np.mean(x,0)
+
+        means = []
+        for ii in range(len(x)):
+            means.append(np.mean(np.delete(x,ii,axis=0),0))
+
+        means = np.array(means)
+
+        err = np.sqrt((len(x)-1)*np.sum((means - mean_x)**2,0))
+        return mean_x, err
     # Calling real data
     distA = d.flatten()
     distB = drand.flatten()
@@ -41,24 +52,26 @@ def plot_2PCF(pred_ratio, d, drand, min_sep, max_sep, nedges):
     thetac = thetac/60
     ratio_dists = np.array([len(distA[(distA>theta[k])&(distA<theta[k+1])]) / len(distB[(distB>theta[k])&(distB<theta[k+1])]) for k in range(len(theta)-1)])
     
-    pred_ratio_jk = np.zeros(shape=(400,7))
-    for k in range(400):
-        pred_ratio_jk[k] = np.delete(pred_ratio,k,0).mean(0)
+    mean_nn, std_nn = estimate(pred_ratio)
+    plt.figure(figsize=(10, 10))
+    plt.plot(thetac, ratio_dists - 1, color='navy',markersize=6, label='Analytical estimation', marker='o', zorder=3)
+    plt.plot(thetac, mean_nn, marker='o', markersize=6, color='#E63946', label='NN estimation', zorder=3)
 
-    network_color = 'crimson'
-    true_color = 'navy'
-    fig=plt.figure(figsize=(10, 6))
-    # Plot predicted 2PCF 
-    plt.errorbar(thetac, pred_ratio_jk.mean(0), pred_ratio_jk.std(0), color=network_color, ls='--', label='$p(DD)/p(RR)$ - Network', marker='.', markersize=8)
-
-    # Plot 2PCF conventional method
-    plt.plot(thetac, ratio_dists - 1, color=true_color, label='$p(DD)/p(RR)$ - True', linewidth=2, marker='o', markersize=8)
+    # Jackknife mean
+    plt.plot(thetac, pred_ratio.mean(0), ls='-', lw=1.5, color='#E63946', zorder=2)
+    # Error bars
+    plt.fill_between(thetac, mean_nn - std_nn, mean_nn + std_nn, color='#BFF6C3', alpha=0.5, label='Error', zorder=1)
 
     plt.xscale('log')
     plt.ylabel(r'$w(\theta)$', fontsize=16)
     plt.xlabel(r'$\theta$', fontsize=16)
-    plt.title('Comparison of Network Predictions and True Values', fontsize=18)
-    plt.grid(which='both', linestyle='--', alpha=0.7)
-    plt.legend()
-    plt.tick_params(axis='both', which='both', labelsize=12)
+    plt.grid(which='both', linestyle='--', linewidth=0.5, color='#A8DADC')
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+
+    plt.legend(fontsize=15)
+
+    plt.title('Two Point Correlation Function (2PCF) estimation', fontsize=18, pad=20)
+
+    plt.tight_layout()
     plt.show()

@@ -27,14 +27,6 @@ import matplotlib.pyplot as plt
 sys.path.append('../mtl_lss/')
 from Clustering_method import clustering
 
-
-# %%
-def estimate(x):
-    l = len(x)-1
-    mean = np.mean(x)
-    std = np.sqrt(l*np.mean(abs(x - mean)**2))
-    return mean, std
-
 # %% [markdown]
 # We first define the minimum and maximum angular separation considered. These values are in arcmin.
 
@@ -71,48 +63,6 @@ thetac = [0.00081062, 0.00213064, 0.00560019, 0.0147196 , 0.03868915,
 # %%
 #Make prediction with new data
 jackknife_preds = Model.pred_clustering(
-    theta_test=thetac
+    theta_test=thetac,
+    plot = True
 )
-
-# %% jupyter={"outputs_hidden": true}
-# np.delete?
-
-# %%
-def estimate(x):
-    mean_x = np.mean(x,0)
-    
-    means = []
-    for ii in range(len(x)):
-        means.append(np.mean(np.delete(x,ii,axis=0),0))
-        
-    means = np.array(means)
-
-    err = np.sqrt((len(x)-1)*np.sum((means - mean_x)**2,0))
-    return mean_x, err
-
-
-# %%
-mean_nn, std_nn = estimate(jackknife_preds)
-
-# %%
-
-#plt.plot(thetac, mean, 'ro', markersize=4, color = 'navy',label = 'Counting pairs')
-#plt.plot(thetac, jackknifes.mean(0), ls = '--', color = 'navy', markersize=4)
-#plt.errorbar(thetac, mean, yerr=std, color='navy', fmt='o')
-
-plt.plot(thetac, mean_nn, 'ro', markersize=4, color = 'crimson',label = 'Neural network')
-plt.plot(thetac, jackknife_preds.mean(0), ls = '--', markersize=4, color = 'black')
-plt.errorbar(thetac,mean_nn,std_nn, color = 'crimson', fmt='o')
-
-
-plt.xscale('log')
-plt.ylabel(r'$w(\theta)$', fontsize=16)
-plt.xlabel(r'$\theta$', fontsize=16)
-plt.grid(which='both')
-
-plt.legend(fontsize = 12)
-
-plt.savefig('wtheta.pdf')
-plt.show()
-
-# %%

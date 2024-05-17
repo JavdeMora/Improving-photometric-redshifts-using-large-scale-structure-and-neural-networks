@@ -10,12 +10,14 @@ from torch.utils.data import TensorDataset, DataLoader, Dataset
 import sys
 import scipy.stats as stats
 import json
+import subprocess
+
 
 sys.path.append('column_mapping.json')
 sys.path.append('MTL_architecture.py')
 from MTL_architecture import MTL_network
-sys.path.append('plots_script.py')
-from plots_script import plot_redshift_distribution
+#sys.path.append('plots_script.py')
+#from plots_script import plot_redshift_distribution
 
 # Set the random seed for NumPy PyTorch and CUDA
 np.random.seed(32)
@@ -65,6 +67,8 @@ class Photoz_MTL:
                 ):
         
         
+        self.root_path = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).decode().strip()
+        
         self.net_MTL = MTL_network(photoz_hlayers, photoz_num_gauss).cuda()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.epochs = epochs
@@ -79,6 +83,9 @@ class Photoz_MTL:
         self.cat_colors =self._get_colors()
         self.d, self.drand = self._load_distances_array(pathfile_distances,pathfile_drand)
         self.MTL_df=self._get_MTL_df(self.cat_colors)
+        
+
+
         
     def _get_photometry_dataset(self, pathfile, bands=['i', 'g', 'r', 'z', 'h', 'j', 'y']):
         """
@@ -98,13 +105,11 @@ class Photoz_MTL:
         if file_extension == '.csv':
             df = pd.read_csv(str(pathfile), sep=',', header=0, comment='#')
         elif file_extension == '.parquet':
-            df = pd.read_parquet(str(pathfile), sep=',', header=0, comment='#')
+            df = pd.read_parquet(str(pathfile))
         else:
             raise ValueError("Only filetypes '.csv' and '.parquet' are supported")
-            
-        # Check if all required columns are present in the DataFrame
-        script_dir = os.path.dirname('MTL_git.ipynb')  # Get directory of the current script  __file__ -> 'MTL_method.py'??
-        json_file_path = os.path.join(script_dir, 'column_mapping.json')
+
+        json_file_path = os.path.join(self.root_path, 'data/column_mapping.json')
         
         required_columns = set(bands)
         if ~required_columns.issubset(df.columns):

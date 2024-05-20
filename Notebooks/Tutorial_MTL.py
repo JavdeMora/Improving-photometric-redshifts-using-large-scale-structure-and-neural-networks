@@ -26,9 +26,9 @@ from MTL_method import Photoz_MTL
 
 #Initialize the class
 Model = Photoz_MTL(
-    pathfile_photometry,
-    pathfile_distances,
-    pathfile_drand,
+    pathfile_photometry = '/data/astro/scratch/lcabayol/EUCLID/MTL_clustering/catalogues/FS2.csv',
+    pathfile_distances = '/data/astro/scratch/lcabayol/EUCLID/MTL_clustering/d_100deg2_z0506_v2.npy',
+    pathfile_drand = '/data/astro/scratch/lcabayol/EUCLID/MTL_clustering/dr_100deg2_v2.npy',
     photoz_hlayers = 5, 
     photoz_num_gauss = 5,
     epochs = 50,
@@ -50,7 +50,7 @@ Model.training(
 # %%
 #Make redshift prediction with color input
 Model.pred_photoz(
-    inputs_pathfile,
+    inputs_pathfile='/nfs/pic.es/user/j/jdemora/MTL/MTL_git/MTL_df_weights.csv',
     all_rows=True,
     bands=['i', 'g', 'r', 'z', 'h', 'j', 'y'],
     plot=True
